@@ -48,7 +48,7 @@ async function processMessage(phone, name, text) {
   // Get full context
   const ctx = getTenantMemoryContext(tenant);
   const history = getRecentConversation(tenant.id);
-  const model = tenant.model || getConfig('anthropic_model') || 'claude-sonnet-4-5-20250514';
+  const model = tenant.model || getConfig('anthropic_model') || 'claude-sonnet-4-5-20250929';
 
   const memoryBlock = ctx.memories.length > 0
     ? `\n\nSaved memories:\n${ctx.memories.map(m => `- [${m.category}] ${m.content}`).join('\n')}`

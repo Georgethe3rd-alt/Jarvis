@@ -29,7 +29,7 @@ db.exec(`
     display_name TEXT,
     status TEXT DEFAULT 'active',
     workspace_path TEXT,
-    model TEXT DEFAULT 'claude-sonnet-4-5-20250514',
+    model TEXT DEFAULT 'claude-sonnet-4-5-20250929',
     max_tokens INTEGER DEFAULT 4096,
     system_prompt TEXT,
     plan TEXT DEFAULT 'free',

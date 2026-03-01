@@ -82,7 +82,7 @@ async function analyzeImage(buffer, mimeType, userPrompt) {
 
   try {
     const response = await client.messages.create({
-      model: getConfig('anthropic_model') || 'claude-sonnet-4-5-20250514',
+      model: getConfig('anthropic_model') || 'claude-sonnet-4-5-20250929',
       max_tokens: 2048,
       messages: [{
         role: 'user',
