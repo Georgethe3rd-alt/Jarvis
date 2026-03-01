@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>J.A.R.V.I.S. — Your Personal AI Assistant</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
@@ -276,9 +277,17 @@
       <div class="status">// Authorization Granted</div>
       <div class="label">Your activation code:</div>
       <div class="code" id="activationCode"></div>
-      <p>Transmit this code to our WhatsApp number to bring your Jarvis instance online.</p>
-      <a class="wa-btn" id="waLink" href="#" target="_blank">◈ Open WhatsApp Channel</a>
+      <p>Send this code to our WhatsApp number to bring your Jarvis instance online:</p>
+      <div id="waNumberDisplay" style="font-family:'Orbitron',monospace;font-size:1.2rem;color:#0af;margin:0.5rem 0;letter-spacing:2px"></div>
+      <a class="wa-btn" id="waLink" href="#" target="_blank">◈ Open WhatsApp & Send Code</a>
       <p style="margin-top:1.5rem;font-size:0.7rem;font-family:'Orbitron',monospace;letter-spacing:2px;color:#4a6a80">Code expires in 24 hours</p>
+      <p style="margin-top:0.5rem"><a href="#" onclick="showResend();return false" style="color:#0af;font-size:0.75rem;font-family:'Orbitron',monospace;letter-spacing:1px">Lost your code? Resend it</a></p>
+    </div>
+    <div id="resendForm" style="display:none;text-align:center;padding:1rem 0">
+      <div class="status">// Code Recovery</div>
+      <input id="resendPhone" type="tel" placeholder="WHATSAPP NUMBER" style="margin-top:1rem">
+      <button class="submit-btn" onclick="resendCode()" style="margin-top:0.5rem">Resend Code →</button>
+      <div class="error" id="resendErr"></div>
     </div>
   </div>
 </section>
@@ -304,6 +313,39 @@ fetch('/api/qr').then(r=>{if(r.ok)return r.text();throw 0}).then(svg=>{
   document.getElementById('qrSection').style.display='block';
 }).catch(()=>{});
 
+let waNumber='';
+// Fetch WhatsApp number on page load
+fetch('/api/whatsapp-number').then(r=>r.json()).then(d=>{if(d.number)waNumber=d.number.replace(/[^\d]/g,'')}).catch(()=>{});
+
+function showResend(){
+  document.getElementById('formFields').style.display='none';
+  document.getElementById('successMsg').style.display='none';
+  document.getElementById('resendForm').style.display='block';
+}
+
+async function resendCode(){
+  const phone=document.getElementById('resendPhone').value.trim();
+  const err=document.getElementById('resendErr');
+  err.textContent='';
+  if(!phone){err.textContent='// PHONE REQUIRED';return}
+  try{
+    const res=await fetch('/api/resend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})});
+    const data=await res.json();
+    if(data.success){
+      document.getElementById('resendForm').style.display='none';
+      document.getElementById('successMsg').style.display='block';
+      document.getElementById('activationCode').textContent=data.activation_code;
+      if(waNumber){
+        document.getElementById('waLink').href=`https://wa.me/${waNumber}?text=${data.activation_code}`;
+        document.getElementById('waLink').style.display='inline-block';
+        document.getElementById('waNumberDisplay').textContent='+'+waNumber;
+      }
+    } else {
+      err.textContent='// '+(data.error||'NOT FOUND').toUpperCase();
+    }
+  }catch{err.textContent='// CONNECTION FAILURE'}
+}
+
 async function register(){
   const btn=document.getElementById('regBtn'),err=document.getElementById('regErr');
   err.textContent='';
@@ -320,9 +362,14 @@ async function register(){
       document.getElementById('formFields').style.display='none';
       document.getElementById('successMsg').style.display='block';
       document.getElementById('activationCode').textContent=data.activation_code;
-      const waNum=document.body.dataset.waNumber||'';
-      if(waNum){document.getElementById('waLink').href=`https://wa.me/${waNum}?text=${data.activation_code}`}
-      else{document.getElementById('waLink').style.display='none'}
+      if(waNumber){
+        document.getElementById('waLink').href=`https://wa.me/${waNumber}?text=${data.activation_code}`;
+        document.getElementById('waLink').style.display='inline-block';
+        document.getElementById('waNumberDisplay').textContent='+'+waNumber;
+      } else {
+        document.getElementById('waLink').style.display='none';
+        document.getElementById('waNumberDisplay').textContent='(Number will be shown once configured)';
+      }
     }else{err.textContent='// '+( data.error||'SYSTEM ERROR').toUpperCase();btn.disabled=false;btn.textContent='Generate Access Code →'}
   }catch{err.textContent='// CONNECTION FAILURE';btn.disabled=false;btn.textContent='Generate Access Code →'}
 }

@@ -3,58 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>Jarvis Admin</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;font-size:14px}
-    .login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh}
-    .login-box{background:#1a1a2e;padding:2rem;border-radius:12px;width:360px;border:1px solid #333}
-    .login-box h1{text-align:center;margin-bottom:1.5rem;color:#00d4aa}
-    input,select,textarea{width:100%;padding:10px 12px;margin-bottom:10px;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#e0e0e0;font-size:13px;font-family:inherit}
+    body{font-family:'Rajdhani',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#020a18;color:#c8dce8;font-size:14px;letter-spacing:0.3px}
+    .login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh;background:radial-gradient(circle at center,rgba(0,170,255,0.05),transparent 70%)}
+    .login-box{background:rgba(0,170,255,0.04);padding:2rem;border-radius:0;width:360px;border:1px solid rgba(0,170,255,0.15);position:relative}
+    .login-box::before{content:'ADMIN ACCESS';position:absolute;top:-10px;left:20px;font-family:'Orbitron',monospace;font-size:0.6rem;letter-spacing:3px;color:#0af;background:#020a18;padding:0 8px;opacity:0.7}
+    .login-box h1{text-align:center;margin-bottom:1.5rem;color:#0af;font-family:'Orbitron',monospace;font-size:1.2rem;letter-spacing:2px}
+    input,select,textarea{width:100%;padding:10px 12px;margin-bottom:10px;background:rgba(0,5,15,0.9);border:1px solid rgba(0,170,255,0.12);border-radius:8px;color:#e0e0e0;font-size:13px;font-family:inherit}
     textarea{min-height:120px;resize:vertical}
-    .btn{padding:10px 20px;background:#00d4aa;color:#0a0a0a;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
-    .btn:hover{background:#00b894}
+    .btn{padding:10px 20px;background:#0af;color:#0a0a0a;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
+    .btn:hover{background:#0090d9}
     .btn-danger{background:#ff6b6b;color:#fff}
     .btn-sm{padding:5px 12px;font-size:12px}
     .error{color:#ff6b6b;text-align:center;margin-top:8px;font-size:13px}
     .app{display:none}
-    .sidebar{position:fixed;left:0;top:0;width:200px;height:100vh;background:#1a1a2e;border-right:1px solid #333;padding:1rem 0;overflow-y:auto}
-    .sidebar h2{padding:0 1rem;color:#00d4aa;font-size:1.1rem;margin-bottom:1.5rem}
+    .sidebar{position:fixed;left:0;top:0;width:200px;height:100vh;background:rgba(0,10,25,0.95);border-right:1px solid rgba(0,170,255,0.15);padding:1rem 0;overflow-y:auto}
+    .sidebar h2{padding:0 1rem;color:#0af;font-size:1rem;margin-bottom:1.5rem;font-family:'Orbitron',monospace;letter-spacing:1px}
     .sidebar a{display:block;padding:9px 1rem;color:#aaa;text-decoration:none;font-size:13px;cursor:pointer}
-    .sidebar a:hover,.sidebar a.active{color:#fff;background:rgba(0,212,170,0.1);border-left:3px solid #00d4aa}
+    .sidebar a:hover,.sidebar a.active{color:#fff;background:rgba(0,170,255,0.1);border-left:3px solid #0af}
     .sidebar .logout{position:absolute;bottom:1rem;left:0;right:0;color:#ff6b6b}
     .main{margin-left:200px;padding:1.5rem}
     .main h1{margin-bottom:1rem;font-size:1.3rem}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
-    .card{background:#1a1a2e;padding:1.2rem;border-radius:10px;border:1px solid #333}
+    .card{background:rgba(0,20,40,0.6);padding:1.2rem;border-radius:10px;border:1px solid rgba(0,170,255,0.12)}
     .card .label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px}
-    .card .value{font-size:1.8rem;font-weight:700;color:#00d4aa;margin-top:2px}
+    .card .value{font-size:1.8rem;font-weight:700;color:#0af;margin-top:2px}
     .card .sub{font-size:11px;color:#666;margin-top:2px}
-    table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:10px;overflow:hidden;margin-bottom:1rem}
-    th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #1e1e30;font-size:13px}
-    th{background:#16213e;color:#888;text-transform:uppercase;font-size:11px;letter-spacing:1px}
-    tr:hover{background:rgba(0,212,170,0.04)}
+    table{width:100%;border-collapse:collapse;background:rgba(0,20,40,0.6);border-radius:10px;overflow:hidden;margin-bottom:1rem}
+    th,td{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(0,170,255,0.08);font-size:13px}
+    th{background:rgba(0,30,60,0.8);color:#888;text-transform:uppercase;font-size:11px;letter-spacing:1px}
+    tr:hover{background:rgba(0,170,255,0.04)}
     tr[onclick]{cursor:pointer}
     .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-    .b-green{background:rgba(0,212,170,0.2);color:#00d4aa}
+    .b-green{background:rgba(0,170,255,0.2);color:#0af}
     .b-yellow{background:rgba(255,193,7,0.2);color:#ffc107}
     .b-red{background:rgba(255,107,107,0.2);color:#ff6b6b}
-    .config-box{background:#1a1a2e;padding:1.2rem;border-radius:10px;border:1px solid #333;margin-bottom:1rem}
-    .config-box h3{color:#00d4aa;margin-bottom:10px;font-size:14px}
+    .config-box{background:rgba(0,20,40,0.6);padding:1.2rem;border-radius:10px;border:1px solid rgba(0,170,255,0.12);margin-bottom:1rem}
+    .config-box h3{color:#0af;margin-bottom:10px;font-size:14px}
     .row{display:flex;gap:10px;margin-bottom:8px}
     .row>*{flex:1}
-    .convo{max-height:500px;overflow-y:auto;background:#111;border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .convo{max-height:500px;overflow-y:auto;background:rgba(0,10,20,0.8);border-radius:10px;padding:1rem;margin-bottom:1rem}
     .msg{margin-bottom:6px;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px;line-height:1.4}
-    .msg.user{background:#16213e;margin-left:auto}
+    .msg.user{background:rgba(0,30,60,0.8);margin-left:auto}
     .msg.assistant{background:#1a2e1a}
     .msg .ts{font-size:10px;color:#555;margin-top:3px}
     .tabs{display:flex;gap:4px;margin-bottom:1rem}
-    .tab{padding:6px 14px;background:#1a1a2e;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:12px;color:#aaa}
-    .tab.active{background:#00d4aa;color:#0a0a0a;border-color:#00d4aa}
-    .back{color:#00d4aa;cursor:pointer;font-size:13px;margin-bottom:1rem;display:inline-block}
+    .tab{padding:6px 14px;background:rgba(0,20,40,0.6);border:1px solid rgba(0,170,255,0.12);border-radius:6px;cursor:pointer;font-size:12px;color:#aaa}
+    .tab.active{background:#0af;color:#0a0a0a;border-color:#0af}
+    .back{color:#0af;cursor:pointer;font-size:13px;margin-bottom:1rem;display:inline-block}
     .hidden{display:none!important}
     /* Hamburger */
-    .hamburger{display:none;position:fixed;top:10px;left:10px;z-index:1001;background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:8px 12px;cursor:pointer;color:#00d4aa;font-size:18px}
+    .hamburger{display:none;position:fixed;top:10px;left:10px;z-index:1001;background:rgba(0,20,40,0.6);border:1px solid rgba(0,170,255,0.12);border-radius:6px;padding:8px 12px;cursor:pointer;color:#0af;font-size:18px}
     .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999}
     @media(max-width:768px){
       .hamburger{display:block}
@@ -142,7 +145,7 @@
           <input id="genPhone" placeholder="Phone (with country code)">
           <button class="btn" onclick="genCode()">Generate</button>
         </div>
-        <div id="genResult" style="margin-top:8px;color:#00d4aa;font-size:13px"></div>
+        <div id="genResult" style="margin-top:8px;color:#0af;font-size:13px"></div>
       </div>
       <table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Code</th><th>Status</th><th>Created</th><th>Expires</th></tr></thead>
       <tbody id="signupsList"></tbody></table>
@@ -211,7 +214,7 @@
         <div id="2faSetup" class="hidden" style="margin-top:12px">
           <p style="color:#888;font-size:13px;margin-bottom:8px">Scan this with your authenticator app (Google Authenticator, Authy, etc):</p>
           <div style="background:#fff;display:inline-block;padding:8px;border-radius:8px;margin-bottom:8px" id="2faQR"></div>
-          <p style="font-family:monospace;font-size:12px;color:#888;margin:8px 0">Secret: <code id="2faSecret" style="color:#00d4aa;user-select:all"></code></p>
+          <p style="font-family:monospace;font-size:12px;color:#888;margin:8px 0">Secret: <code id="2faSecret" style="color:#0af;user-select:all"></code></p>
           <div class="row" style="max-width:400px">
             <input id="2faCode" placeholder="Enter 6-digit code to verify">
             <button class="btn" onclick="enable2FA()">Enable 2FA</button>
@@ -230,7 +233,7 @@
     <!-- Backups -->
     <div id="p-backups" class="hidden">
       <h1>💾 Database Backups</h1>
-      <div style="margin-bottom:1rem"><button class="btn" onclick="triggerBackup()">Create Backup Now</button> <span id="backupMsg" style="color:#00d4aa;font-size:13px;margin-left:10px"></span></div>
+      <div style="margin-bottom:1rem"><button class="btn" onclick="triggerBackup()">Create Backup Now</button> <span id="backupMsg" style="color:#0af;font-size:13px;margin-left:10px"></span></div>
       <table><thead><tr><th>Filename</th><th>Size</th><th>Created</th></tr></thead>
       <tbody id="backupsList"></tbody></table>
     </div>
@@ -454,9 +457,9 @@ async function loadAnalytics(){
     const bars=data.map((d,i)=>{
       const h=(d.count/max)*(height-40);
       const x=30+i*(bw+2);
-      return `<rect x="${x}" y="${height-20-h}" width="${bw}" height="${h}" fill="#00d4aa" rx="2"><title>${d.day}: ${d.count}</title></rect>`;
+      return `<rect x="${x}" y="${height-20-h}" width="${bw}" height="${h}" fill="#0af" rx="2"><title>${d.day}: ${d.count}</title></rect>`;
     }).join('');
-    return `<svg width="${width}" height="${height}" style="background:#1a1a2e;border-radius:8px;padding:4px">
+    return `<svg width="${width}" height="${height}" style="background:rgba(0,20,40,0.6);border-radius:8px;padding:4px">
       <text x="4" y="14" fill="#666" font-size="10">${max}</text>
       <line x1="28" y1="0" x2="28" y2="${height-20}" stroke="#333"/>
       <line x1="28" y1="${height-20}" x2="${width}" y2="${height-20}" stroke="#333"/>
@@ -471,21 +474,21 @@ async function loadAnalytics(){
       <div class="card"><div class="label">30d Retention</div><div class="value">${d.retention30d}%</div></div>
       <div class="card"><div class="label">MRR</div><div class="value">$${d.revenue}</div></div>
     </div>
-    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
-      <h3 style="color:#00d4aa;margin-bottom:8px">Message Volume (30 days)</h3>
+    <div style="background:rgba(0,20,40,0.6);padding:16px;border-radius:10px">
+      <h3 style="color:#0af;margin-bottom:8px">Message Volume (30 days)</h3>
       ${barChart(d.messageVolume)}
     </div>
-    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
-      <h3 style="color:#00d4aa;margin-bottom:8px">Plan Distribution</h3>
-      ${d.planCounts.map(p=>`<span style="display:inline-block;margin:4px 8px;padding:4px 12px;background:#0a0a0a;border-radius:6px">${p.plan||'free'}: <b>${p.count}</b></span>`).join('')}
+    <div style="background:rgba(0,20,40,0.6);padding:16px;border-radius:10px">
+      <h3 style="color:#0af;margin-bottom:8px">Plan Distribution</h3>
+      ${d.planCounts.map(p=>`<span style="display:inline-block;margin:4px 8px;padding:4px 12px;background:rgba(0,5,15,0.9);border-radius:6px">${p.plan||'free'}: <b>${p.count}</b></span>`).join('')}
     </div>
-    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
-      <h3 style="color:#00d4aa;margin-bottom:8px">Top Users</h3>
+    <div style="background:rgba(0,20,40,0.6);padding:16px;border-radius:10px">
+      <h3 style="color:#0af;margin-bottom:8px">Top Users</h3>
       <table><thead><tr><th>Name</th><th>Phone</th><th>Messages</th><th>Plan</th><th>Last Active</th></tr></thead>
       <tbody>${d.topUsers.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.phone}</td><td>${u.message_count}</td><td>${u.plan||'free'}</td><td>${u.last_active?new Date(u.last_active).toLocaleDateString():'-'}</td></tr>`).join('')}</tbody></table>
     </div>
-    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
-      <h3 style="color:#00d4aa;margin-bottom:8px">Token Cost per User (Top 20)</h3>
+    <div style="background:rgba(0,20,40,0.6);padding:16px;border-radius:10px">
+      <h3 style="color:#0af;margin-bottom:8px">Token Cost per User (Top 20)</h3>
       <table><thead><tr><th>Name</th><th>Phone</th><th>Total Tokens</th><th>Est. Cost</th></tr></thead>
       <tbody>${d.costPerUser.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.phone}</td><td>${u.total_tokens.toLocaleString()}</td><td>$${(u.total_tokens/1000*0.003).toFixed(2)}</td></tr>`).join('')}</tbody></table>
     </div>`;
@@ -496,7 +499,7 @@ async function loadErrors(){
   const counts=Object.entries(d.hourlyCounts||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
   document.getElementById('errorStats').innerHTML=counts.map(([h,c])=>
     `<div class="card"><div class="label">${h.slice(5)}</div><div class="value" style="color:#ff6b6b">${c}</div></div>`
-  ).join('')||'<div class="card"><div class="label">Errors</div><div class="value" style="color:#00d4aa">0</div><div class="sub">All clear!</div></div>';
+  ).join('')||'<div class="card"><div class="label">Errors</div><div class="value" style="color:#0af">0</div><div class="sub">All clear!</div></div>';
   document.getElementById('errorsList').innerHTML=(d.errors||[]).map(e=>
     `<tr><td style="white-space:nowrap;font-size:12px">${e.timestamp?new Date(e.timestamp).toLocaleString():'-'}</td>
     <td style="color:#ff6b6b">${esc(e.message)}</td>
