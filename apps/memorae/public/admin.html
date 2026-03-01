@@ -76,7 +76,7 @@
 
 <div class="login-wrap" id="loginView">
   <div class="login-box">
-    <h1>🤖 Jarvis Admin</h1>
+    <h1><img src="/jarvis-helm.svg" alt="" style="width:32px;height:auto;vertical-align:middle;filter:drop-shadow(0 0 8px rgba(120,200,255,0.3));margin-right:8px">Jarvis Admin</h1>
     <input id="username" placeholder="Username" autocomplete="username">
     <input id="password" type="password" placeholder="Password" autocomplete="current-password">
     <input id="totpInput" type="text" placeholder="2FA Code (if enabled)" autocomplete="one-time-code" style="display:none">
@@ -89,7 +89,7 @@
   <div class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</div>
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <div class="sidebar" id="sidebar">
-    <h2>🤖 Jarvis</h2>
+    <h2 style="display:flex;align-items:center;gap:8px"><img src="/jarvis-helm.svg" alt="" style="width:24px;height:auto;filter:drop-shadow(0 0 8px rgba(120,200,255,0.3))">Jarvis</h2>
     <a onclick="nav('dash')" id="n-dash" class="active">📊 Dashboard</a>
     <a onclick="nav('tenants')" id="n-tenants">👥 Tenants</a>
     <a onclick="nav('signups')" id="n-signups">📝 Signups</a>
