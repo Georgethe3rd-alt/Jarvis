@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Admin</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;font-size:14px}
+    .login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh}
+    .login-box{background:#1a1a2e;padding:2rem;border-radius:12px;width:360px;border:1px solid #333}
+    .login-box h1{text-align:center;margin-bottom:1.5rem;color:#00d4aa}
+    input,select,textarea{width:100%;padding:10px 12px;margin-bottom:10px;background:#0a0a0a;border:1px solid #333;border-radius:8px;color:#e0e0e0;font-size:13px;font-family:inherit}
+    textarea{min-height:120px;resize:vertical}
+    .btn{padding:10px 20px;background:#00d4aa;color:#0a0a0a;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
+    .btn:hover{background:#00b894}
+    .btn-danger{background:#ff6b6b;color:#fff}
+    .btn-sm{padding:5px 12px;font-size:12px}
+    .error{color:#ff6b6b;text-align:center;margin-top:8px;font-size:13px}
+    .app{display:none}
+    .sidebar{position:fixed;left:0;top:0;width:200px;height:100vh;background:#1a1a2e;border-right:1px solid #333;padding:1rem 0;overflow-y:auto}
+    .sidebar h2{padding:0 1rem;color:#00d4aa;font-size:1.1rem;margin-bottom:1.5rem}
+    .sidebar a{display:block;padding:9px 1rem;color:#aaa;text-decoration:none;font-size:13px;cursor:pointer}
+    .sidebar a:hover,.sidebar a.active{color:#fff;background:rgba(0,212,170,0.1);border-left:3px solid #00d4aa}
+    .sidebar .logout{position:absolute;bottom:1rem;left:0;right:0;color:#ff6b6b}
+    .main{margin-left:200px;padding:1.5rem}
+    .main h1{margin-bottom:1rem;font-size:1.3rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+    .card{background:#1a1a2e;padding:1.2rem;border-radius:10px;border:1px solid #333}
+    .card .label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px}
+    .card .value{font-size:1.8rem;font-weight:700;color:#00d4aa;margin-top:2px}
+    .card .sub{font-size:11px;color:#666;margin-top:2px}
+    table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:10px;overflow:hidden;margin-bottom:1rem}
+    th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #1e1e30;font-size:13px}
+    th{background:#16213e;color:#888;text-transform:uppercase;font-size:11px;letter-spacing:1px}
+    tr:hover{background:rgba(0,212,170,0.04)}
+    tr[onclick]{cursor:pointer}
+    .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+    .b-green{background:rgba(0,212,170,0.2);color:#00d4aa}
+    .b-yellow{background:rgba(255,193,7,0.2);color:#ffc107}
+    .b-red{background:rgba(255,107,107,0.2);color:#ff6b6b}
+    .config-box{background:#1a1a2e;padding:1.2rem;border-radius:10px;border:1px solid #333;margin-bottom:1rem}
+    .config-box h3{color:#00d4aa;margin-bottom:10px;font-size:14px}
+    .row{display:flex;gap:10px;margin-bottom:8px}
+    .row>*{flex:1}
+    .convo{max-height:500px;overflow-y:auto;background:#111;border-radius:10px;padding:1rem;margin-bottom:1rem}
+    .msg{margin-bottom:6px;padding:8px 12px;border-radius:8px;max-width:80%;font-size:13px;line-height:1.4}
+    .msg.user{background:#16213e;margin-left:auto}
+    .msg.assistant{background:#1a2e1a}
+    .msg .ts{font-size:10px;color:#555;margin-top:3px}
+    .tabs{display:flex;gap:4px;margin-bottom:1rem}
+    .tab{padding:6px 14px;background:#1a1a2e;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:12px;color:#aaa}
+    .tab.active{background:#00d4aa;color:#0a0a0a;border-color:#00d4aa}
+    .back{color:#00d4aa;cursor:pointer;font-size:13px;margin-bottom:1rem;display:inline-block}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginView">
+  <div class="login-box">
+    <h1>🤖 Jarvis Admin</h1>
+    <input id="username" placeholder="Username" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="btn" style="width:100%" onclick="login()">Sign In</button>
+    <div class="error" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="app" id="appView">
+  <div class="sidebar">
+    <h2>🤖 Jarvis</h2>
+    <a onclick="nav('dash')" id="n-dash" class="active">📊 Dashboard</a>
+    <a onclick="nav('tenants')" id="n-tenants">👥 Tenants</a>
+    <a onclick="nav('config')" id="n-config">🔑 API Keys</a>
+    <a onclick="nav('usage')" id="n-usage">📈 Usage</a>
+    <a class="logout" onclick="logout()">🚪 Logout</a>
+  </div>
+  <div class="main">
+    <!-- Dashboard -->
+    <div id="p-dash">
+      <h1>Dashboard</h1>
+      <div class="grid" id="statsGrid"></div>
+    </div>
+
+    <!-- Tenants -->
+    <div id="p-tenants" class="hidden">
+      <h1>Tenants</h1>
+      <table><thead><tr><th>ID</th><th>Phone</th><th>Name</th><th>Status</th><th>Messages</th><th>Memories</th><th>Last Active</th></tr></thead>
+      <tbody id="tenantsList"></tbody></table>
+    </div>
+
+    <!-- Tenant Detail -->
+    <div id="p-tenant" class="hidden">
+      <span class="back" onclick="nav('tenants')">← Back to tenants</span>
+      <h1 id="tenantTitle"></h1>
+      <div class="grid" id="tenantStats"></div>
+      <div class="tabs">
+        <div class="tab active" onclick="tenantTab('convo',this)">💬 Conversation</div>
+        <div class="tab" onclick="tenantTab('mems',this)">🧠 Memories</div>
+        <div class="tab" onclick="tenantTab('rems',this)">⏰ Reminders</div>
+        <div class="tab" onclick="tenantTab('files',this)">📁 Files</div>
+        <div class="tab" onclick="tenantTab('settings',this)">⚙️ Settings</div>
+      </div>
+      <div id="t-convo"></div>
+      <div id="t-mems" class="hidden"></div>
+      <div id="t-rems" class="hidden"></div>
+      <div id="t-files" class="hidden"></div>
+      <div id="t-settings" class="hidden"></div>
+    </div>
+
+    <!-- Config -->
+    <div id="p-config" class="hidden">
+      <h1>API Keys & Configuration</h1>
+      <div class="config-box">
+        <h3>Add / Update</h3>
+        <div class="row">
+          <select id="cfgKey">
+            <option value="whatsapp_token">WhatsApp Token</option>
+            <option value="whatsapp_phone_number_id">WhatsApp Phone Number ID</option>
+            <option value="whatsapp_verify_token">WhatsApp Verify Token</option>
+            <option value="whatsapp_app_secret">WhatsApp App Secret</option>
+            <option value="anthropic_api_key">Anthropic API Key</option>
+            <option value="anthropic_model">Anthropic Model</option>
+            <option value="elevenlabs_api_key">ElevenLabs API Key</option>
+            <option value="elevenlabs_voice_id">ElevenLabs Voice ID</option>
+            <option value="custom">Custom Key...</option>
+          </select>
+        </div>
+        <input id="cfgCustom" placeholder="Custom key name" class="hidden">
+        <div class="row">
+          <input id="cfgVal" placeholder="Value">
+          <button class="btn" onclick="saveCfg()">Save</button>
+        </div>
+      </div>
+      <table><thead><tr><th>Key</th><th>Value</th><th>Updated</th><th></th></tr></thead>
+      <tbody id="cfgList"></tbody></table>
+    </div>
+
+    <!-- Usage -->
+    <div id="p-usage" class="hidden">
+      <h1>Token Usage (Last 30 Days)</h1>
+      <table><thead><tr><th>Date</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Total</th></tr></thead>
+      <tbody id="usageList"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+let token=localStorage.getItem('jt'),currentTenant=null;
+const A='/admin/api';
+document.getElementById('cfgKey').onchange=function(){document.getElementById('cfgCustom').classList.toggle('hidden',this.value!=='custom')};
+if(token)showApp();
+
+async function api(p,o={}){
+  const r=await fetch(A+p,{...o,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,...o.headers}});
+  if(r.status===401){logout();return null}
+  return r.json();
+}
+
+async function login(){
+  const u=document.getElementById('username').value,p=document.getElementById('password').value;
+  try{
+    const r=await fetch(A+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    if(d.token){token=d.token;localStorage.setItem('jt',token);showApp()}
+    else document.getElementById('loginErr').textContent=d.error||'Failed';
+  }catch{document.getElementById('loginErr').textContent='Connection error'}
+}
+
+function logout(){token=null;localStorage.removeItem('jt');location.reload()}
+function showApp(){document.getElementById('loginView').style.display='none';document.getElementById('appView').style.display='block';nav('dash')}
+
+function nav(p){
+  ['dash','tenants','tenant','config','usage'].forEach(x=>document.getElementById('p-'+x).classList.add('hidden'));
+  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
+  const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
+  document.getElementById('p-'+p).classList.remove('hidden');
+  if(p==='dash')loadDash();
+  if(p==='tenants')loadTenants();
+  if(p==='config')loadCfg();
+  if(p==='usage')loadUsage();
+}
+
+async function loadDash(){
+  const s=await api('/stats');if(!s)return;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="card"><div class="label">Total Tenants</div><div class="value">${s.tenants}</div></div>
+    <div class="card"><div class="label">Active Today</div><div class="value">${s.active}</div></div>
+    <div class="card"><div class="label">Total Messages</div><div class="value">${s.conversations}</div></div>
+    <div class="card"><div class="label">Memories</div><div class="value">${s.memories}</div></div>
+    <div class="card"><div class="label">Pending Reminders</div><div class="value">${s.reminders}</div></div>
+    <div class="card"><div class="label">Tokens Today</div><div class="value">${(s.todayTokens/1000).toFixed(1)}k</div></div>
+    <div class="card"><div class="label">Tokens Total</div><div class="value">${(s.totalTokens/1000).toFixed(1)}k</div></div>`;
+}
+
+async function loadTenants(){
+  const t=await api('/tenants');if(!t)return;
+  document.getElementById('tenantsList').innerHTML=t.map(u=>`
+    <tr onclick="showTenant(${u.id})">
+      <td>${u.id}</td><td>${u.phone}</td><td>${u.name||'-'}</td>
+      <td><span class="badge ${u.status==='active'?'b-green':'b-red'}">${u.status}</span></td>
+      <td>${u.message_count}</td><td>${u.memory_count}</td>
+      <td>${new Date(u.last_active).toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+async function showTenant(id){
+  const t=await api('/tenants/'+id);if(!t)return;
+  currentTenant=t;
+  ['dash','tenants','config','usage'].forEach(x=>document.getElementById('p-'+x).classList.add('hidden'));
+  document.getElementById('p-tenant').classList.remove('hidden');
+  document.getElementById('tenantTitle').textContent=`${t.display_name||t.name||'Unknown'} — ${t.phone}`;
+  document.getElementById('tenantStats').innerHTML=`
+    <div class="card"><div class="label">Messages</div><div class="value">${t.message_count}</div></div>
+    <div class="card"><div class="label">Memories</div><div class="value">${t.memory_count}</div></div>
+    <div class="card"><div class="label">Tokens Used</div><div class="value">${((t.usage.input+t.usage.output)/1000).toFixed(1)}k</div></div>
+    <div class="card"><div class="label">Model</div><div class="value" style="font-size:13px">${t.model}</div></div>`;
+  tenantTab('convo',document.querySelector('.tab'));
+}
+
+function tenantTab(tab,el){
+  ['convo','mems','rems','files','settings'].forEach(x=>document.getElementById('t-'+x).classList.add('hidden'));
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('t-'+tab).classList.remove('hidden');
+  const t=currentTenant;if(!t)return;
+
+  if(tab==='convo'){
+    let h='<div class="convo">';
+    t.conversations.slice().reverse().forEach(c=>{
+      h+=`<div class="msg ${c.role}"><div>${esc(c.content)}</div><div class="ts">${new Date(c.created_at).toLocaleString()}</div></div>`;
+    });
+    document.getElementById('t-convo').innerHTML=h+'</div>';
+  }
+  if(tab==='mems'){
+    let h='<table><thead><tr><th>Content</th><th>Category</th><th>Date</th></tr></thead><tbody>';
+    t.memories.forEach(m=>{h+=`<tr><td>${esc(m.content)}</td><td><span class="badge b-green">${m.category}</span></td><td>${new Date(m.created_at).toLocaleDateString()}</td></tr>`});
+    document.getElementById('t-mems').innerHTML=h+'</tbody></table>';
+  }
+  if(tab==='rems'){
+    let h='<table><thead><tr><th>Content</th><th>Due</th><th>Status</th></tr></thead><tbody>';
+    t.reminders.forEach(r=>{
+      const s=r.sent?'<span class="badge b-green">Sent</span>':'<span class="badge b-yellow">Pending</span>';
+      h+=`<tr><td>${esc(r.content)}</td><td>${new Date(r.remind_at).toLocaleString()}</td><td>${s}</td></tr>`;
+    });
+    document.getElementById('t-rems').innerHTML=h+'</tbody></table>';
+  }
+  if(tab==='files'){
+    document.getElementById('t-files').innerHTML=`
+      <div class="config-box"><h3>SOUL.md (Personality)</h3><textarea id="fileSoul">${esc(t.soul||'')}</textarea><button class="btn btn-sm" onclick="saveFiles()">Save Files</button></div>
+      <div class="config-box"><h3>MEMORY.md (Long-term Memory)</h3><textarea id="fileMemory">${esc(t.memory||'')}</textarea></div>`;
+  }
+  if(tab==='settings'){
+    document.getElementById('t-settings').innerHTML=`
+      <div class="config-box">
+        <h3>Tenant Settings</h3>
+        <label style="color:#888;font-size:12px">Display Name</label>
+        <input id="setName" value="${t.display_name||t.name||''}">
+        <label style="color:#888;font-size:12px">Model</label>
+        <input id="setModel" value="${t.model||''}">
+        <label style="color:#888;font-size:12px">Max Tokens</label>
+        <input id="setMaxTok" type="number" value="${t.max_tokens||4096}">
+        <label style="color:#888;font-size:12px">Status</label>
+        <select id="setStatus"><option ${t.status==='active'?'selected':''}>active</option><option ${t.status==='suspended'?'selected':''}>suspended</option><option ${t.status==='banned'?'selected':''}>banned</option></select>
+        <br><button class="btn" onclick="saveTenant()">Save Settings</button>
+      </div>`;
+  }
+}
+
+async function saveFiles(){
+  await api('/tenants/'+currentTenant.id+'/files',{method:'PUT',body:JSON.stringify({
+    soul:document.getElementById('fileSoul').value,
+    memory:document.getElementById('fileMemory').value
+  })});
+  alert('Files saved');
+}
+
+async function saveTenant(){
+  await api('/tenants/'+currentTenant.id,{method:'PUT',body:JSON.stringify({
+    display_name:document.getElementById('setName').value,
+    model:document.getElementById('setModel').value,
+    max_tokens:parseInt(document.getElementById('setMaxTok').value),
+    status:document.getElementById('setStatus').value
+  })});
+  alert('Settings saved');
+}
+
+async function loadCfg(){
+  const c=await api('/config');if(!c)return;
+  document.getElementById('cfgList').innerHTML=c.map(x=>`
+    <tr><td><strong>${x.key}</strong></td><td style="font-family:monospace;font-size:12px">${x.display_value}</td>
+    <td>${new Date(x.updated_at).toLocaleString()}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delCfg('${x.key}')">Delete</button></td></tr>`).join('');
+}
+
+async function saveCfg(){
+  const sel=document.getElementById('cfgKey');
+  const k=sel.value==='custom'?document.getElementById('cfgCustom').value:sel.value;
+  const v=document.getElementById('cfgVal').value;
+  if(!k||!v)return alert('Key and value required');
+  await api('/config',{method:'PUT',body:JSON.stringify({key:k,value:v})});
+  document.getElementById('cfgVal').value='';loadCfg();
+}
+
+async function delCfg(k){if(!confirm('Delete '+k+'?'))return;await api('/config/'+k,{method:'DELETE'});loadCfg()}
+
+async function loadUsage(){
+  const u=await api('/usage');if(!u)return;
+  document.getElementById('usageList').innerHTML=u.map(d=>`
+    <tr><td>${d.day}</td><td>${d.requests}</td><td>${d.input.toLocaleString()}</td><td>${d.output.toLocaleString()}</td><td>${(d.input+d.output).toLocaleString()}</td></tr>`).join('');
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+</script>
+</body>
+</html>
