@@ -43,13 +43,19 @@
     /* Hero */
     .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;position:relative}
     
-    .arc-reactor{width:120px;height:120px;border-radius:50%;position:relative;margin-bottom:2rem;animation:reactor-spin 20s linear infinite}
-    .arc-reactor::before{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid var(--arc-blue);opacity:0.5;box-shadow:var(--arc-glow)}
-    .arc-reactor::after{content:'';position:absolute;inset:15px;border-radius:50%;border:1px solid var(--arc-cyan);opacity:0.3}
-    .arc-core{position:absolute;inset:30px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,0.4) 0%,rgba(0,170,255,0.1) 60%,transparent 100%);box-shadow:0 0 40px rgba(0,229,255,0.3),0 0 80px rgba(0,170,255,0.15),inset 0 0 30px rgba(0,229,255,0.2)}
-    .arc-ring{position:absolute;inset:5px;border-radius:50%;border:1px dashed rgba(0,170,255,0.2);animation:reactor-spin-reverse 15s linear infinite}
+    .arc-reactor{width:160px;height:160px;border-radius:50%;position:relative;margin-bottom:2rem;animation:reactor-spin 20s linear infinite}
+    .arc-reactor::before{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid rgba(120,200,255,0.6);box-shadow:0 0 15px rgba(120,200,255,0.4),0 0 40px rgba(80,180,255,0.3),0 0 80px rgba(50,160,255,0.2),0 0 120px rgba(30,140,255,0.1)}
+    .arc-reactor::after{content:'';position:absolute;inset:18px;border-radius:50%;border:1.5px solid rgba(150,220,255,0.4);box-shadow:0 0 10px rgba(120,200,255,0.2),inset 0 0 10px rgba(120,200,255,0.1)}
+    .arc-core{position:absolute;inset:35px;border-radius:50%;background:radial-gradient(circle,rgba(200,235,255,0.7) 0%,rgba(120,200,255,0.5) 30%,rgba(60,170,255,0.3) 55%,rgba(30,140,255,0.1) 75%,transparent 100%);box-shadow:0 0 30px rgba(150,215,255,0.6),0 0 60px rgba(100,190,255,0.4),0 0 100px rgba(60,170,255,0.25),0 0 150px rgba(40,150,255,0.15),inset 0 0 25px rgba(180,225,255,0.4);animation:core-pulse 3s ease-in-out infinite}
+    .arc-core::after{content:'';position:absolute;inset:15px;border-radius:50%;background:radial-gradient(circle,rgba(220,240,255,0.9) 0%,rgba(180,225,255,0.5) 40%,transparent 70%);box-shadow:0 0 20px rgba(200,235,255,0.5)}
+    .arc-ring{position:absolute;inset:5px;border-radius:50%;border:1px dashed rgba(120,200,255,0.25);animation:reactor-spin-reverse 15s linear infinite}
+    .arc-ring2{position:absolute;inset:25px;border-radius:50%;border:1px solid transparent;border-top:1px solid rgba(150,220,255,0.3);border-bottom:1px solid rgba(150,220,255,0.3);animation:reactor-spin 8s linear infinite}
+    /* Outer ambient glow */
+    .arc-reactor-glow{position:absolute;top:50%;left:50%;width:300px;height:300px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(80,180,255,0.08) 0%,rgba(50,160,255,0.04) 40%,transparent 70%);pointer-events:none;animation:glow-breathe 4s ease-in-out infinite}
     @keyframes reactor-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes reactor-spin-reverse{from{transform:rotate(360deg)}to{transform:rotate(0deg)}}
+    @keyframes core-pulse{0%,100%{opacity:0.85;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+    @keyframes glow-breathe{0%,100%{opacity:0.6;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}
     
     .hero-label{font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:6px;color:var(--arc-blue);text-transform:uppercase;margin-bottom:0.5rem;opacity:0.7}
     .hero h1{font-family:'Orbitron',monospace;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;line-height:1.1;margin-bottom:0.5rem;color:#fff;text-shadow:0 0 40px rgba(0,170,255,0.3)}
@@ -163,9 +169,13 @@
 <div class="content">
 
 <section class="hero">
-  <div class="arc-reactor">
-    <div class="arc-ring"></div>
-    <div class="arc-core"></div>
+  <div style="position:relative;display:flex;align-items:center;justify-content:center">
+    <div class="arc-reactor-glow"></div>
+    <div class="arc-reactor">
+      <div class="arc-ring"></div>
+      <div class="arc-ring2"></div>
+      <div class="arc-core"></div>
+    </div>
   </div>
   <div class="hero-label">// Artificial Intelligence System</div>
   <h1><span>J.A.R.V.I.S.</span></h1>
