@@ -1,0 +1,45 @@
+# TOOLS.md.example — Local Configuration Template
+
+Copy this to `TOOLS.md` and fill in your credentials.
+**Never commit `TOOLS.md` to version control.**
+
+## AgentMail
+
+- **API Key**: `am_us_...`
+- **Service**: Email API that gives AI agents their own inboxes
+- **Webhook Path**: `/hooks/agentmail`
+- **Webhook Token**: `[YOUR_WEBHOOK_SECRET]`
+
+## Communication Channels
+
+### Telegram
+- Bot token: `[YOUR_TELEGRAM_BOT_TOKEN]`
+- Username: `@your_bot`
+
+## Twilio
+
+- **Account SID**: `[YOUR_TWILIO_ACCOUNT_SID]`
+- **Auth Token**: `[YOUR_TWILIO_AUTH_TOKEN]`
+- **Phone Numbers**:
+  - **Primary**: +1XXXXXXXXXX — Voice & SMS
+
+## OpenAI
+
+- **API Key**: `sk-...`
+- **Services**: GPT models (fallback LLM), Whisper (speech-to-text), TTS
+
+## ElevenLabs
+
+- **API Key**: `[YOUR_ELEVENLABS_API_KEY]`
+- **Voice ID**: `onwK4e9ZLuTAKqWW03F9` (Daniel - British, Formal)
+- **Model**: `eleven_multilingual_v2`
+
+## GitHub
+
+- **Username**: your-github-username
+- **Repository**: https://github.com/your-org/your-repo
+- **SSH Key**: generate with `ssh-keygen -t ed25519 -C "george-openclaw@agentmail.to"`
+
+## Webhooks
+- Base path: `/hooks`
+- Requires Bearer token authentication
