@@ -10,18 +10,21 @@ const fs = require('fs');
 });
 
 const db = require('./db');
-const { verifyWebhook, parseWebhook, sendMessage, markAsRead } = require('./whatsapp');
+const { verifyWebhook, parseWebhook, sendMessage, sendAudioMessage, markAsRead, downloadMedia } = require('./whatsapp');
 const { processMessage } = require('./ai');
 const { provisionTenant } = require('./tenant');
 const adminRouter = require('./admin');
 const { router: signupRouter, normalizePhone } = require('./signup');
 const { startReminderChecker } = require('./reminders');
+const { transcribe, textToSpeech } = require('./voice');
+const callRouter = require('./calls');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ─── Landing Page ───────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -38,8 +41,54 @@ app.post('/webhook', async (req, res) => {
   const msg = parseWebhook(req.body);
   if (!msg || !msg.text) return;
 
+  // Handle voice notes
+  if ((msg.type === 'audio' || msg.type === 'voice') && msg.audioId) {
+    console.log(`[VOICE] Audio message from ${phone}, downloading...`);
+    const audioBuffer = await downloadMedia(msg.audioId);
+    if (!audioBuffer) {
+      await sendMessage(phone, "I couldn't process that voice note. Try again?");
+      return;
+    }
+
+    const transcription = await transcribe(audioBuffer);
+    if (!transcription) {
+      await sendMessage(phone, "I couldn't understand that voice note. Could you try again or type it out?");
+      return;
+    }
+
+    console.log(`[VOICE] Transcribed from ${phone}: "${transcription.substring(0, 80)}..."`);
+
+    // Check if active tenant (same logic as text)
+    const voiceTenant = db.prepare('SELECT * FROM tenants WHERE phone = ? AND status = ?').get(phone, 'active');
+    if (!voiceTenant) {
+      await sendMessage(phone, `I heard: "${transcription}"\n\nBut you need to activate first — send your 6-digit code to get started.`);
+      return;
+    }
+
+    try {
+      const reply = await processMessage(phone, msg.name, transcription);
+      if (reply) {
+        // Try to reply with voice note back
+        const ttsAudio = await textToSpeech(reply);
+        if (ttsAudio) {
+          await sendAudioMessage(phone, ttsAudio);
+          // Also send as text for reference
+          if (reply.length > 100) {
+            await sendMessage(phone, reply);
+          }
+        } else {
+          await sendMessage(phone, reply);
+        }
+      }
+    } catch (err) {
+      console.error('[VOICE ERROR]', err);
+      await sendMessage(phone, "Something went wrong processing your voice note. Try again?");
+    }
+    return;
+  }
+
   if (msg.type !== 'text') {
-    await sendMessage(msg.from, "I can read text messages for now — voice and images coming soon! 🤖");
+    await sendMessage(msg.from, "I can handle text and voice notes for now — images coming soon! 🤖");
     return;
   }
 
@@ -122,6 +171,9 @@ app.post('/webhook', async (req, res) => {
   );
 });
 
+// ─── Voice Calls (Twilio) ───────────────────────────────────
+app.use('/voice', callRouter);
+
 // ─── Admin Console ──────────────────────────────────────────
 app.use('/admin/api', adminRouter);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
@@ -142,6 +194,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  🌐 Landing Page     : http://0.0.0.0:${PORT}`);
   console.log(`  📱 WhatsApp Webhook : http://0.0.0.0:${PORT}/webhook`);
   console.log(`  🔧 Admin Console    : http://0.0.0.0:${PORT}/admin`);
+  console.log(`  📞 Voice Calls      : http://0.0.0.0:${PORT}/voice/incoming`);
   console.log(`  💚 Health Check     : http://0.0.0.0:${PORT}/health`);
   console.log('');
   startReminderChecker();

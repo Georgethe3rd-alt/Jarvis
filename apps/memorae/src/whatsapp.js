@@ -101,6 +101,7 @@ function parseWebhook(body) {
       name: contact?.profile?.name || 'Unknown',
       type: msg.type,
       text: msg.text?.body || '',
+      audioId: msg.audio?.id || msg.voice?.id || null,
       timestamp: msg.timestamp,
       messageId: msg.id
     };
@@ -109,4 +110,61 @@ function parseWebhook(body) {
   }
 }
 
-module.exports = { sendMessage, markAsRead, verifyWebhook, parseWebhook, getConfig };
+async function downloadMedia(mediaId) {
+  const token = getConfig('whatsapp_token') || process.env.WHATSAPP_TOKEN;
+  if (!token || !mediaId) return null;
+
+  try {
+    // Step 1: Get media URL
+    const urlRes = await axios.get(`${GRAPH_API}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const mediaUrl = urlRes.data.url;
+
+    // Step 2: Download the media
+    const mediaRes = await axios.get(mediaUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'arraybuffer'
+    });
+    return Buffer.from(mediaRes.data);
+  } catch (err) {
+    console.error('[WA] Media download error:', err.response?.data || err.message);
+    return null;
+  }
+}
+
+async function sendAudioMessage(to, audioBuffer) {
+  const token = getConfig('whatsapp_token') || process.env.WHATSAPP_TOKEN;
+  const phoneId = getConfig('whatsapp_phone_number_id') || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) return null;
+
+  try {
+    // Upload media first
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', audioBuffer, { filename: 'response.ogg', contentType: 'audio/ogg' });
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'audio/ogg');
+
+    const uploadRes = await axios.post(`${GRAPH_API}/${phoneId}/media`, form, {
+      headers: { Authorization: `Bearer ${token}`, ...form.getHeaders() }
+    });
+    const mediaId = uploadRes.data.id;
+
+    // Send audio message
+    const res = await axios.post(`${GRAPH_API}/${phoneId}/messages`, {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'audio',
+      audio: { id: mediaId }
+    }, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    return res.data;
+  } catch (err) {
+    console.error('[WA] Audio send error:', err.response?.data || err.message);
+    return null;
+  }
+}
+
+module.exports = { sendMessage, sendAudioMessage, markAsRead, verifyWebhook, parseWebhook, downloadMedia, getConfig };
