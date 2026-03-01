@@ -18,6 +18,7 @@ const { router: signupRouter, normalizePhone } = require('./signup');
 const { startReminderChecker } = require('./reminders');
 const { transcribe, textToSpeech } = require('./voice');
 const callRouter = require('./calls');
+const { processAttachment } = require('./documents');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -87,8 +88,54 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
+  // Handle images
+  if (msg.type === 'image' && msg.imageId) {
+    console.log(`[DOC] Image from ${phone}`);
+    const tenant = db.prepare('SELECT * FROM tenants WHERE phone = ? AND status = ?').get(phone, 'active');
+    if (!tenant) {
+      await sendMessage(phone, "You need to activate first before I can analyze images. Send your 6-digit code to get started.");
+      return;
+    }
+    await sendMessage(phone, "🔍 Analyzing your image...");
+    const result = await processAttachment(msg.imageId, msg.imageMime, msg.text);
+    if (result.text) {
+      const contextMsg = msg.text
+        ? `[User sent an image with caption: "${msg.text}"]\n\nImage analysis:\n${result.text}`
+        : `[User sent an image]\n\nImage analysis:\n${result.text}`;
+      const reply = await processMessage(phone, msg.name, contextMsg);
+      if (reply) await sendMessage(phone, reply);
+    } else {
+      await sendMessage(phone, "I couldn't analyze that image. Try sending it again?");
+    }
+    return;
+  }
+
+  // Handle documents (PDF, Word, etc.)
+  if (msg.type === 'document' && msg.documentId) {
+    console.log(`[DOC] Document from ${phone}: ${msg.documentName} (${msg.documentMime})`);
+    const tenant = db.prepare('SELECT * FROM tenants WHERE phone = ? AND status = ?').get(phone, 'active');
+    if (!tenant) {
+      await sendMessage(phone, "You need to activate first before I can read documents. Send your 6-digit code to get started.");
+      return;
+    }
+    await sendMessage(phone, `📄 Reading "${msg.documentName || 'document'}"...`);
+    const result = await processAttachment(msg.documentId, msg.documentMime, msg.text);
+    if (result.text) {
+      const contextMsg = msg.text
+        ? `[User sent a ${result.type} document: "${msg.documentName}". Caption: "${msg.text}"]\n\nExtracted content:\n${result.text}`
+        : `[User sent a ${result.type} document: "${msg.documentName}"]\n\nExtracted content:\n${result.text}`;
+      const reply = await processMessage(phone, msg.name, contextMsg);
+      if (reply) await sendMessage(phone, reply);
+    } else if (result.type === 'unknown') {
+      await sendMessage(phone, `I can't read that file type yet (${result.mimeType}). I support PDFs, Word documents (.docx), images, and text files.`);
+    } else {
+      await sendMessage(phone, "I had trouble reading that document. The file might be corrupted or password-protected.");
+    }
+    return;
+  }
+
   if (msg.type !== 'text') {
-    await sendMessage(msg.from, "I can handle text and voice notes for now — images coming soon! 🤖");
+    await sendMessage(msg.from, "I can handle text, voice notes, images, and documents (PDF/Word). Send me one of those! 🤖");
     return;
   }
 

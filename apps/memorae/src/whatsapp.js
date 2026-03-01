@@ -100,8 +100,13 @@ function parseWebhook(body) {
       from: msg.from,
       name: contact?.profile?.name || 'Unknown',
       type: msg.type,
-      text: msg.text?.body || '',
+      text: msg.text?.body || msg.image?.caption || msg.document?.caption || '',
       audioId: msg.audio?.id || msg.voice?.id || null,
+      imageId: msg.image?.id || null,
+      imageMime: msg.image?.mime_type || null,
+      documentId: msg.document?.id || null,
+      documentMime: msg.document?.mime_type || null,
+      documentName: msg.document?.filename || null,
       timestamp: msg.timestamp,
       messageId: msg.id
     };
