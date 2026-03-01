@@ -384,7 +384,7 @@ async function register(){
   }catch{err.textContent='// CONNECTION FAILURE';btn.disabled=false;btn.textContent='Generate Access Code →'}
 }
 
-// ─── Jarvis Ambient HUD Sound ───────────────────────────────
+// ─── Iron Man Repulsor Sound ─────────────────────────────────
 (function(){
   var started=false;
   function startAmbient(){
@@ -393,39 +393,94 @@ async function register(){
     document.removeEventListener('touchstart',startAmbient);
     try{
       var ctx=new(window.AudioContext||window.webkitAudioContext)();
-      // Low electric hum
-      var osc1=ctx.createOscillator();osc1.type='sine';osc1.frequency.value=80;
-      var g1=ctx.createGain();g1.gain.value=0.012;
-      osc1.connect(g1);g1.connect(ctx.destination);osc1.start();
-      // Higher harmonic shimmer
-      var osc2=ctx.createOscillator();osc2.type='sine';osc2.frequency.value=220;
-      var g2=ctx.createGain();g2.gain.value=0.006;
-      osc2.connect(g2);g2.connect(ctx.destination);osc2.start();
-      // Faint digital pulse
-      var osc3=ctx.createOscillator();osc3.type='triangle';osc3.frequency.value=440;
-      var g3=ctx.createGain();g3.gain.value=0;
-      osc3.connect(g3);g3.connect(ctx.destination);osc3.start();
-      // Pulse the high tone in and out
-      function pulse(){
-        var t=ctx.currentTime;
-        g3.gain.setValueAtTime(0,t);
-        g3.gain.linearRampToValueAtTime(0.004,t+0.5);
-        g3.gain.linearRampToValueAtTime(0,t+2.5);
-        // Shimmer the mid frequency
-        osc2.frequency.setValueAtTime(220,t);
-        osc2.frequency.linearRampToValueAtTime(260,t+3);
-        osc2.frequency.linearRampToValueAtTime(220,t+6);
-        setTimeout(pulse,6000);
-      }
-      pulse();
-      // Startup boot sound — sweep
-      var boot=ctx.createOscillator();boot.type='sine';boot.frequency.value=200;
-      var bg=ctx.createGain();bg.gain.value=0.04;
-      boot.connect(bg);bg.connect(ctx.destination);
-      boot.frequency.linearRampToValueAtTime(800,ctx.currentTime+0.6);
-      boot.frequency.linearRampToValueAtTime(440,ctx.currentTime+1.0);
-      bg.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2);
-      boot.start();boot.stop(ctx.currentTime+1.3);
+      var t=ctx.currentTime;
+
+      // === REPULSOR CHARGE-UP (rising whine) ===
+      // High-pitched charging whine that rises in pitch
+      var charge=ctx.createOscillator();charge.type='sawtooth';charge.frequency.value=150;
+      var chargeGain=ctx.createGain();chargeGain.gain.value=0;
+      var chargeFilter=ctx.createBiquadFilter();chargeFilter.type='bandpass';chargeFilter.frequency.value=800;chargeFilter.Q.value=3;
+      charge.connect(chargeFilter);chargeFilter.connect(chargeGain);chargeGain.connect(ctx.destination);
+      // Ramp up the whine
+      charge.frequency.setValueAtTime(150,t);
+      charge.frequency.exponentialRampToValueAtTime(1200,t+1.2);
+      charge.frequency.exponentialRampToValueAtTime(2400,t+1.8);
+      chargeFilter.frequency.setValueAtTime(400,t);
+      chargeFilter.frequency.exponentialRampToValueAtTime(3000,t+1.8);
+      chargeGain.gain.setValueAtTime(0,t);
+      chargeGain.gain.linearRampToValueAtTime(0.04,t+0.3);
+      chargeGain.gain.linearRampToValueAtTime(0.08,t+1.5);
+      chargeGain.gain.linearRampToValueAtTime(0.12,t+1.8);
+      chargeGain.gain.linearRampToValueAtTime(0,t+2.0);
+      charge.start(t);charge.stop(t+2.1);
+
+      // Secondary charge harmonic
+      var charge2=ctx.createOscillator();charge2.type='sine';charge2.frequency.value=300;
+      var c2g=ctx.createGain();c2g.gain.value=0;
+      charge2.connect(c2g);c2g.connect(ctx.destination);
+      charge2.frequency.setValueAtTime(300,t);
+      charge2.frequency.exponentialRampToValueAtTime(3200,t+1.8);
+      c2g.gain.setValueAtTime(0,t);
+      c2g.gain.linearRampToValueAtTime(0.03,t+0.5);
+      c2g.gain.linearRampToValueAtTime(0.06,t+1.7);
+      c2g.gain.linearRampToValueAtTime(0,t+2.0);
+      charge2.start(t);charge2.stop(t+2.1);
+
+      // === BLAST RELEASE (at t+1.8s) ===
+      var blastTime=t+1.8;
+
+      // Heavy bass blast thump
+      var blast=ctx.createOscillator();blast.type='sine';blast.frequency.value=120;
+      var blastGain=ctx.createGain();blastGain.gain.value=0;
+      blast.connect(blastGain);blastGain.connect(ctx.destination);
+      blast.frequency.setValueAtTime(120,blastTime);
+      blast.frequency.exponentialRampToValueAtTime(30,blastTime+0.8);
+      blastGain.gain.setValueAtTime(0.2,blastTime);
+      blastGain.gain.exponentialRampToValueAtTime(0.001,blastTime+1.0);
+      blast.start(blastTime);blast.stop(blastTime+1.1);
+
+      // Blast noise burst (the "woosh")
+      var bufLen=ctx.sampleRate*1.5;
+      var noiseBuf=ctx.createBuffer(1,bufLen,ctx.sampleRate);
+      var data=noiseBuf.getChannelData(0);
+      for(var i=0;i<bufLen;i++)data[i]=(Math.random()*2-1);
+      var noise=ctx.createBufferSource();noise.buffer=noiseBuf;
+      var noiseFilter=ctx.createBiquadFilter();noiseFilter.type='bandpass';noiseFilter.frequency.value=1500;noiseFilter.Q.value=0.8;
+      var noiseGain=ctx.createGain();noiseGain.gain.value=0;
+      noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(ctx.destination);
+      noiseFilter.frequency.setValueAtTime(3000,blastTime);
+      noiseFilter.frequency.exponentialRampToValueAtTime(200,blastTime+1.2);
+      noiseGain.gain.setValueAtTime(0.15,blastTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001,blastTime+1.2);
+      noise.start(blastTime);noise.stop(blastTime+1.3);
+
+      // Blast mid-range beam tone
+      var beam=ctx.createOscillator();beam.type='square';beam.frequency.value=600;
+      var beamGain=ctx.createGain();beamGain.gain.value=0;
+      var beamFilter=ctx.createBiquadFilter();beamFilter.type='lowpass';beamFilter.frequency.value=2000;
+      beam.connect(beamFilter);beamFilter.connect(beamGain);beamGain.connect(ctx.destination);
+      beam.frequency.setValueAtTime(600,blastTime);
+      beam.frequency.exponentialRampToValueAtTime(150,blastTime+0.6);
+      beamGain.gain.setValueAtTime(0.06,blastTime);
+      beamGain.gain.exponentialRampToValueAtTime(0.001,blastTime+0.8);
+      beam.start(blastTime);beam.stop(blastTime+0.9);
+
+      // === AMBIENT HUM (after blast settles) ===
+      var humTime=t+3.0;
+      var hum=ctx.createOscillator();hum.type='sine';hum.frequency.value=80;
+      var humGain=ctx.createGain();humGain.gain.value=0;
+      hum.connect(humGain);humGain.connect(ctx.destination);
+      humGain.gain.setValueAtTime(0,humTime);
+      humGain.gain.linearRampToValueAtTime(0.015,humTime+1.0);
+      hum.start(humTime);
+
+      // Faint reactor idle tone
+      var idle=ctx.createOscillator();idle.type='triangle';idle.frequency.value=220;
+      var idleGain=ctx.createGain();idleGain.gain.value=0;
+      idle.connect(idleGain);idleGain.connect(ctx.destination);
+      idleGain.gain.setValueAtTime(0,humTime);
+      idleGain.gain.linearRampToValueAtTime(0.005,humTime+1.5);
+      idle.start(humTime);
     }catch(e){}
   }
   document.addEventListener('click',startAmbient);
