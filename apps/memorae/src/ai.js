@@ -1,7 +1,7 @@
 const Anthropic = require('@anthropic-ai/sdk').default;
 const db = require('./db');
 const { getConfig } = require('./whatsapp');
-const { provisionTenant, getTenantMemoryContext, appendDailyNote, updateMemoryFile } = require('./tenant');
+const { provisionTenant, getTenantMemoryContext, appendDailyNote, updateMemoryFile, updateSoulFile } = require('./tenant');
 
 function getClient() {
   const apiKey = getConfig('anthropic_api_key') || process.env.ANTHROPIC_API_KEY;
@@ -96,6 +96,12 @@ To perform actions, include JSON blocks at the END of your reply (they will be s
 {"type": "daily_note", "content": "brief note about what happened in this conversation"}
 \`\`\`
 
+\`\`\`action
+{"type": "update_soul", "content": "new personality instruction or preference to add to SOUL.md"}
+\`\`\`
+
+When the user asks you to change your personality, tone, language, or name — use update_soul to persist that change.
+
 You can include multiple action blocks. Keep your spoken reply natural and concise.`;
 
   // Build messages array with proper alternation
@@ -148,6 +154,10 @@ You can include multiple action blocks. Keep your spoken reply natural and conci
             break;
           case 'daily_note':
             appendDailyNote(tenant, action.content);
+            break;
+          case 'update_soul':
+            updateSoulFile(tenant, action.content);
+            appendDailyNote(tenant, `Personality updated: ${action.content}`);
             break;
         }
       } catch (e) {

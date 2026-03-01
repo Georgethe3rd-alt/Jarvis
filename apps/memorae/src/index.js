@@ -84,13 +84,21 @@ app.post('/webhook', async (req, res) => {
       console.log(`[ACTIVATE] ${signup.name} (${phone}) → Tenant #${newTenant.id}`);
 
       await sendMessage(phone,
-        `✅ Welcome aboard, ${signup.name}! I'm Jarvis, your personal AI assistant.\n\n` +
-        `Here's what I can do:\n` +
-        `🧠 *Remember things* — Tell me anything to save to memory\n` +
-        `⏰ *Set reminders* — "Remind me to call Mom at 5pm"\n` +
-        `📋 *Organize* — I'll categorize and recall your info\n` +
-        `💬 *Chat* — Ask me anything, brainstorm, draft messages\n\n` +
-        `Everything you tell me is private and stored in your personal workspace. Let's get started — what can I help you with?`
+        `✅ *Jarvis online.* Welcome, ${signup.name}.\n\n` +
+        `Your personal AI workspace has been provisioned. Here's what I can do:\n\n` +
+        `🧠 *Total Recall* — Tell me anything. I never forget.\n` +
+        `⏰ *Reminders* — "Remind me to call Mom at 5pm"\n` +
+        `📋 *Lists & Organization* — Shopping, tasks, ideas — all sorted.\n` +
+        `💬 *Draft & Think* — Brainstorm, write emails, plan projects.\n` +
+        `📊 *Daily Briefing* — Ask me "What's on my plate today?"\n\n` +
+        `Everything is private — your own isolated workspace that no one else can access.\n\n` +
+        `One more thing: I come with a default personality (think Jarvis from Iron Man — dry wit, proactive, gets things done). But I'm *yours* to customize.\n\n` +
+        `Want to change how I talk? Just tell me:\n` +
+        `• "Be more casual" or "Be more formal"\n` +
+        `• "Speak to me in French"\n` +
+        `• "Be more like a coach"\n` +
+        `• "Call me [nickname]"\n\n` +
+        `Or just start using me as-is. What can I help you with?`
       );
       return;
     }
