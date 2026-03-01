@@ -3,212 +3,275 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jarvis — Your Personal AI Assistant on WhatsApp</title>
+  <title>J.A.R.V.I.S. — Your Personal AI Assistant</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+    
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;overflow-x:hidden}
+    :root{
+      --arc-blue:#0af;--arc-gold:#f0c040;--arc-cyan:#00e5ff;--arc-dark:#020a18;
+      --arc-panel:rgba(0,170,255,0.04);--arc-border:rgba(0,170,255,0.15);
+      --arc-glow:0 0 20px rgba(0,170,255,0.3),0 0 60px rgba(0,170,255,0.1);
+      --text-primary:#c8dce8;--text-dim:#4a6a80;
+    }
+    body{font-family:'Rajdhani',sans-serif;background:var(--arc-dark);color:var(--text-primary);overflow-x:hidden;letter-spacing:0.3px}
+    
+    /* Animated background */
+    .bg-grid{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(0,170,255,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,170,255,0.03) 1px,transparent 1px);
+      background-size:60px 60px;
+    }
+    .bg-arc{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;height:800px;pointer-events:none;z-index:0;
+      background:radial-gradient(circle,rgba(0,170,255,0.06) 0%,rgba(0,170,255,0.02) 30%,transparent 70%);
+      animation:pulse 8s ease-in-out infinite;
+    }
+    @keyframes pulse{0%,100%{opacity:0.6;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}}
+    
+    .content{position:relative;z-index:1}
+    
+    /* HUD corners */
+    .hud-corner{position:fixed;width:60px;height:60px;pointer-events:none;z-index:2}
+    .hud-corner::before,.hud-corner::after{content:'';position:absolute;background:var(--arc-blue);opacity:0.3}
+    .hud-tl{top:20px;left:20px}.hud-tl::before{top:0;left:0;width:30px;height:2px}.hud-tl::after{top:0;left:0;width:2px;height:30px}
+    .hud-tr{top:20px;right:20px}.hud-tr::before{top:0;right:0;width:30px;height:2px}.hud-tr::after{top:0;right:0;width:2px;height:30px}
+    .hud-bl{bottom:20px;left:20px}.hud-bl::before{bottom:0;left:0;width:30px;height:2px}.hud-bl::after{bottom:0;left:0;width:2px;height:30px}
+    .hud-br{bottom:20px;right:20px}.hud-br::before{bottom:0;right:0;width:30px;height:2px}.hud-br::after{bottom:0;right:0;width:2px;height:30px}
     
     /* Hero */
     .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;position:relative}
-    .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(0,212,170,0.08) 0%,transparent 70%);pointer-events:none}
-    .logo{font-size:3rem;margin-bottom:0.5rem}
-    .hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,#00d4aa,#00b4d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .hero p{font-size:1.1rem;color:#999;max-width:500px;margin-bottom:2rem;line-height:1.6}
-    .hero .sub{font-size:0.9rem;color:#666}
+    
+    .arc-reactor{width:120px;height:120px;border-radius:50%;position:relative;margin-bottom:2rem;animation:reactor-spin 20s linear infinite}
+    .arc-reactor::before{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid var(--arc-blue);opacity:0.5;box-shadow:var(--arc-glow)}
+    .arc-reactor::after{content:'';position:absolute;inset:15px;border-radius:50%;border:1px solid var(--arc-cyan);opacity:0.3}
+    .arc-core{position:absolute;inset:30px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,0.4) 0%,rgba(0,170,255,0.1) 60%,transparent 100%);box-shadow:0 0 40px rgba(0,229,255,0.3),0 0 80px rgba(0,170,255,0.15),inset 0 0 30px rgba(0,229,255,0.2)}
+    .arc-ring{position:absolute;inset:5px;border-radius:50%;border:1px dashed rgba(0,170,255,0.2);animation:reactor-spin-reverse 15s linear infinite}
+    @keyframes reactor-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes reactor-spin-reverse{from{transform:rotate(360deg)}to{transform:rotate(0deg)}}
+    
+    .hero-label{font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:6px;color:var(--arc-blue);text-transform:uppercase;margin-bottom:0.5rem;opacity:0.7}
+    .hero h1{font-family:'Orbitron',monospace;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;line-height:1.1;margin-bottom:0.5rem;color:#fff;text-shadow:0 0 40px rgba(0,170,255,0.3)}
+    .hero h1 span{color:var(--arc-blue)}
+    .hero .tagline{font-size:1.2rem;color:var(--text-dim);max-width:550px;margin-bottom:2.5rem;line-height:1.7;font-weight:300}
+    
+    .cta-btn{display:inline-block;padding:16px 40px;border:1px solid var(--arc-blue);color:var(--arc-blue);font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:3px;text-transform:uppercase;text-decoration:none;position:relative;overflow:hidden;transition:all 0.4s;cursor:pointer;background:transparent}
+    .cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,170,255,0.1),rgba(0,229,255,0.05));opacity:0;transition:opacity 0.4s}
+    .cta-btn:hover{color:#fff;border-color:var(--arc-cyan);box-shadow:var(--arc-glow);text-shadow:0 0 10px rgba(0,170,255,0.5)}
+    .cta-btn:hover::before{opacity:1}
+    
+    .hero-sub{margin-top:1.5rem;font-size:0.8rem;color:var(--text-dim);letter-spacing:1px}
+    
+    /* Section divider */
+    .divider{width:200px;height:1px;margin:0 auto;background:linear-gradient(90deg,transparent,var(--arc-blue),transparent);opacity:0.3}
     
     /* Features */
-    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;max-width:900px;margin:0 auto 4rem;padding:0 2rem}
-    .feat{background:#111;border:1px solid #222;border-radius:12px;padding:1.5rem;text-align:center}
-    .feat .icon{font-size:2rem;margin-bottom:0.5rem}
-    .feat h3{font-size:1rem;margin-bottom:0.5rem;color:#00d4aa}
-    .feat p{font-size:0.85rem;color:#888;line-height:1.5}
+    .section{padding:5rem 2rem}
+    .section-title{font-family:'Orbitron',monospace;text-align:center;font-size:1.6rem;margin-bottom:0.5rem;color:#fff;letter-spacing:2px}
+    .section-sub{text-align:center;color:var(--text-dim);margin-bottom:3rem;font-size:0.9rem}
+    
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;max-width:960px;margin:0 auto}
+    .feat{background:var(--arc-panel);border:1px solid var(--arc-border);padding:2rem;position:relative;overflow:hidden;transition:all 0.3s}
+    .feat::before{content:'';position:absolute;top:0;left:0;width:40px;height:2px;background:var(--arc-blue);transition:width 0.3s}
+    .feat::after{content:'';position:absolute;top:0;left:0;width:2px;height:40px;background:var(--arc-blue);transition:height 0.3s}
+    .feat:hover{border-color:rgba(0,170,255,0.3);box-shadow:0 0 30px rgba(0,170,255,0.05)}
+    .feat:hover::before{width:100%}.feat:hover::after{height:100%}
+    .feat .icon{font-size:1.8rem;margin-bottom:0.8rem}
+    .feat h3{font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:2px;color:var(--arc-blue);margin-bottom:0.5rem;text-transform:uppercase}
+    .feat p{font-size:0.9rem;color:var(--text-dim);line-height:1.6}
     
     /* How it works */
-    .how{max-width:700px;margin:0 auto 4rem;padding:0 2rem}
-    .how h2{text-align:center;font-size:1.8rem;margin-bottom:2rem;color:#fff}
-    .steps{display:flex;flex-direction:column;gap:1.5rem}
-    .step{display:flex;align-items:flex-start;gap:1rem}
-    .step-num{flex-shrink:0;width:40px;height:40px;background:#00d4aa;color:#0a0a0a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem}
-    .step-text h3{font-size:1rem;margin-bottom:4px}
-    .step-text p{font-size:0.85rem;color:#888;line-height:1.5}
+    .steps{max-width:600px;margin:0 auto}
+    .step{display:flex;align-items:flex-start;gap:1.5rem;margin-bottom:2rem;position:relative}
+    .step-num{flex-shrink:0;width:50px;height:50px;border:1px solid var(--arc-blue);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:1.2rem;font-weight:700;color:var(--arc-blue);position:relative}
+    .step-num::after{content:'';position:absolute;bottom:-30px;left:50%;width:1px;height:28px;background:linear-gradient(to bottom,var(--arc-blue),transparent);opacity:0.3}
+    .step:last-child .step-num::after{display:none}
+    .step-text h3{font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:1px;margin-bottom:4px;color:#fff}
+    .step-text p{font-size:0.9rem;color:var(--text-dim);line-height:1.6}
     
-    /* Sign up form */
-    .signup-section{max-width:440px;margin:0 auto;padding:0 2rem 4rem}
-    .signup-section h2{text-align:center;font-size:1.8rem;margin-bottom:0.5rem}
-    .signup-section .sub{text-align:center;color:#888;margin-bottom:2rem;font-size:0.9rem}
-    .form-box{background:#111;border:1px solid #222;border-radius:16px;padding:2rem}
-    .form-box input{width:100%;padding:14px 16px;margin-bottom:12px;background:#0a0a0a;border:1px solid #333;border-radius:10px;color:#e0e0e0;font-size:15px;font-family:inherit;transition:border 0.2s}
-    .form-box input:focus{outline:none;border-color:#00d4aa}
-    .form-box input::placeholder{color:#555}
-    .form-box .phone-hint{font-size:11px;color:#666;margin:-8px 0 12px 4px}
-    .form-box button{width:100%;padding:14px;background:linear-gradient(135deg,#00d4aa,#00b4d8);color:#0a0a0a;border:none;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer;transition:opacity 0.2s}
-    .form-box button:hover{opacity:0.9}
-    .form-box button:disabled{opacity:0.5;cursor:not-allowed}
-    .error{color:#ff6b6b;text-align:center;margin-top:10px;font-size:13px}
-    .success-msg{display:none;text-align:center;padding:1.5rem 0}
-    .success-msg .code{font-size:2.5rem;font-weight:800;color:#00d4aa;letter-spacing:8px;margin:1rem 0}
-    .success-msg p{color:#999;font-size:0.9rem;line-height:1.6}
-    .success-msg .wa-btn{display:inline-block;margin-top:1rem;padding:12px 24px;background:#25D366;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}
+    /* Sign up */
+    .signup-section{max-width:480px;margin:0 auto;padding:0 2rem 5rem}
+    .form-box{background:var(--arc-panel);border:1px solid var(--arc-border);padding:2rem;position:relative}
+    .form-box::before{content:'REGISTRATION PROTOCOL';position:absolute;top:-10px;left:20px;font-family:'Orbitron',monospace;font-size:0.6rem;letter-spacing:3px;color:var(--arc-blue);background:var(--arc-dark);padding:0 8px;opacity:0.7}
+    .form-box input{width:100%;padding:14px 16px;margin-bottom:12px;background:rgba(0,10,25,0.8);border:1px solid rgba(0,170,255,0.15);color:var(--text-primary);font-size:14px;font-family:'Rajdhani',sans-serif;letter-spacing:0.5px;transition:border 0.3s}
+    .form-box input:focus{outline:none;border-color:var(--arc-blue);box-shadow:0 0 10px rgba(0,170,255,0.1)}
+    .form-box input::placeholder{color:var(--text-dim)}
+    .phone-hint{font-size:0.7rem;color:var(--text-dim);margin:-8px 0 12px 2px;font-family:'Orbitron',monospace;letter-spacing:1px}
+    .form-box .submit-btn{width:100%;padding:14px;background:transparent;border:1px solid var(--arc-blue);color:var(--arc-blue);font-family:'Orbitron',monospace;font-size:0.8rem;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden}
+    .form-box .submit-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,170,255,0.15),rgba(0,229,255,0.05));opacity:0;transition:opacity 0.3s}
+    .form-box .submit-btn:hover{color:#fff;box-shadow:var(--arc-glow)}
+    .form-box .submit-btn:hover::before{opacity:1}
+    .form-box .submit-btn:disabled{opacity:0.4;cursor:not-allowed}
+    .error{color:#ff4444;text-align:center;margin-top:10px;font-size:0.8rem;font-family:'Orbitron',monospace;letter-spacing:1px}
+    
+    .success-msg{display:none;text-align:center;padding:2rem 0}
+    .success-msg .status{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:4px;color:var(--arc-blue);text-transform:uppercase;margin-bottom:0.5rem}
+    .success-msg .label{font-size:1rem;color:var(--text-dim);margin-bottom:0.5rem}
+    .success-msg .code{font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;color:var(--arc-cyan);letter-spacing:12px;margin:1rem 0;text-shadow:0 0 30px rgba(0,229,255,0.4)}
+    .success-msg p{color:var(--text-dim);font-size:0.9rem;line-height:1.6}
+    .wa-btn{display:inline-block;margin-top:1.5rem;padding:14px 28px;background:#25D366;color:#fff;text-decoration:none;font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;transition:all 0.3s}
+    .wa-btn:hover{box-shadow:0 0 20px rgba(37,211,102,0.3)}
+    
+    /* Scanning line animation */
+    .scan-line{position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--arc-blue),transparent);opacity:0.1;animation:scan 6s linear infinite;pointer-events:none;z-index:3}
+    @keyframes scan{0%{top:0}100%{top:100vh}}
     
     /* Footer */
-    .footer{text-align:center;padding:2rem;color:#444;font-size:0.8rem;border-top:1px solid #1a1a1a}
+    .footer{text-align:center;padding:2rem;color:var(--text-dim);font-size:0.75rem;border-top:1px solid var(--arc-border);font-family:'Orbitron',monospace;letter-spacing:2px}
     
     @media(max-width:600px){
       .features{grid-template-columns:1fr}
       .hero{padding:1.5rem}
+      .hud-corner{display:none}
     }
   </style>
 </head>
 <body>
 
+<div class="bg-grid"></div>
+<div class="bg-arc"></div>
+<div class="scan-line"></div>
+<div class="hud-corner hud-tl"></div>
+<div class="hud-corner hud-tr"></div>
+<div class="hud-corner hud-bl"></div>
+<div class="hud-corner hud-br"></div>
+
+<div class="content">
+
 <section class="hero">
-  <div class="logo">🤖</div>
-  <h1>Meet Jarvis.<br>Your AI assistant<br>on WhatsApp.</h1>
-  <p>A personal AI that remembers everything, sets reminders, organizes your life — all through a simple WhatsApp message.</p>
-  <a href="#signup" style="padding:14px 32px;background:linear-gradient(135deg,#00d4aa,#00b4d8);color:#0a0a0a;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Get Started Free →</a>
-  <div class="sub" style="margin-top:1rem">No app to download. No login to remember. Just WhatsApp.</div>
+  <div class="arc-reactor">
+    <div class="arc-ring"></div>
+    <div class="arc-core"></div>
+  </div>
+  <div class="hero-label">// Artificial Intelligence System</div>
+  <h1><span>J.A.R.V.I.S.</span></h1>
+  <p class="tagline">Your personal AI assistant — always listening, always remembering, always ready. Accessible through a simple WhatsApp message.</p>
+  <a href="#signup" class="cta-btn">Initialize Protocol →</a>
+  <div class="hero-sub">No downloads required. WhatsApp is your interface.</div>
 </section>
 
-<section class="features">
-  <div class="feat">
-    <div class="icon">🧠</div>
-    <h3>Infinite Memory</h3>
-    <p>Tell Jarvis anything — names, ideas, passwords, recipes — and recall it anytime with a simple question.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">⏰</div>
-    <h3>Smart Reminders</h3>
-    <p>"Remind me to call the dentist Thursday at 2pm." Jarvis handles it. Never forget again.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">📋</div>
-    <h3>Lists & Organization</h3>
-    <p>Shopping lists, project tasks, bucket lists — Jarvis categorizes and manages everything for you.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">💬</div>
-    <h3>Ask Anything</h3>
-    <p>Powered by advanced AI. Brainstorm ideas, draft messages, get answers — it's like having a genius on speed dial.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">🔒</div>
-    <h3>Private & Secure</h3>
-    <p>Your data lives in your own isolated workspace. No one else can access your memories or conversations.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">⚡</div>
-    <h3>Instant Setup</h3>
-    <p>Sign up, get a code, text it to Jarvis. You're live in 30 seconds. No app downloads, no passwords.</p>
+<div class="divider"></div>
+
+<section class="section">
+  <div class="section-title">System Capabilities</div>
+  <div class="section-sub">// Core modules online</div>
+  <div class="features">
+    <div class="feat">
+      <div class="icon">◈</div>
+      <h3>Memory Core</h3>
+      <p>Store anything — names, ideas, passwords, notes. Recall instantly with a natural question. Your personal knowledge base.</p>
+    </div>
+    <div class="feat">
+      <div class="icon">◉</div>
+      <h3>Temporal Alerts</h3>
+      <p>Set reminders in plain language. "Remind me to call the office at 9am Monday." Jarvis handles the rest.</p>
+    </div>
+    <div class="feat">
+      <div class="icon">◇</div>
+      <h3>Data Organization</h3>
+      <p>Lists, categories, projects. Everything is sorted and searchable. Your chaos becomes structured information.</p>
+    </div>
+    <div class="feat">
+      <div class="icon">◆</div>
+      <h3>Intelligence Engine</h3>
+      <p>Powered by advanced AI. Draft messages, brainstorm, analyze, research — a genius-level assistant at your fingertips.</p>
+    </div>
+    <div class="feat">
+      <div class="icon">◎</div>
+      <h3>Isolated Workspace</h3>
+      <p>Your data lives in your own encrypted workspace. No one else can access your memories, conversations, or files.</p>
+    </div>
+    <div class="feat">
+      <div class="icon">◐</div>
+      <h3>Instant Deploy</h3>
+      <p>30 seconds from sign-up to operational. No app, no password, no friction. Just WhatsApp and your activation code.</p>
+    </div>
   </div>
 </section>
 
-<section class="how">
-  <h2>How it works</h2>
+<div class="divider"></div>
+
+<section class="section">
+  <div class="section-title">Activation Sequence</div>
+  <div class="section-sub">// Three steps to initialize</div>
   <div class="steps">
     <div class="step">
-      <div class="step-num">1</div>
+      <div class="step-num">01</div>
       <div class="step-text">
-        <h3>Sign up below</h3>
-        <p>Enter your name, email, and WhatsApp number. Takes 10 seconds.</p>
+        <h3>Register Below</h3>
+        <p>Provide your name, email, and WhatsApp number. Your credentials are encrypted and stored securely.</p>
       </div>
     </div>
     <div class="step">
-      <div class="step-num">2</div>
+      <div class="step-num">02</div>
       <div class="step-text">
-        <h3>Get your activation code</h3>
-        <p>You'll receive a 6-digit code instantly. This is your key to Jarvis.</p>
+        <h3>Receive Activation Code</h3>
+        <p>A 6-digit authorization code is generated instantly. This is your key to initialize your Jarvis instance.</p>
       </div>
     </div>
     <div class="step">
-      <div class="step-num">3</div>
+      <div class="step-num">03</div>
       <div class="step-text">
-        <h3>Text the code to our WhatsApp</h3>
-        <p>Send the code to our number. Jarvis activates, introduces himself, and you're ready to go.</p>
+        <h3>Transmit Code via WhatsApp</h3>
+        <p>Send the code to our WhatsApp number. Your personal workspace is provisioned and Jarvis comes online.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="signup-section" id="signup">
-  <h2>Get started</h2>
-  <div class="sub">Free to try. No credit card required.</div>
+<div class="divider"></div>
+
+<section class="signup-section section" id="signup">
+  <div class="section-title">Begin Registration</div>
+  <div class="section-sub">// Authorization required</div>
   <div class="form-box">
     <div id="formFields">
-      <input id="regName" placeholder="Your name" autocomplete="name">
-      <input id="regEmail" type="email" placeholder="Email address" autocomplete="email">
-      <input id="regPhone" type="tel" placeholder="WhatsApp number (e.g. +1 868 123 4567)" autocomplete="tel">
-      <div class="phone-hint">Include country code. This must be your WhatsApp number.</div>
-      <button id="regBtn" onclick="register()">Get My Activation Code →</button>
+      <input id="regName" placeholder="FULL NAME" autocomplete="name">
+      <input id="regEmail" type="email" placeholder="EMAIL ADDRESS" autocomplete="email">
+      <input id="regPhone" type="tel" placeholder="WHATSAPP NUMBER (+1 868 123 4567)" autocomplete="tel">
+      <div class="phone-hint">// Include country code</div>
+      <button class="submit-btn" id="regBtn" onclick="register()">Generate Access Code →</button>
       <div class="error" id="regErr"></div>
     </div>
     <div class="success-msg" id="successMsg">
-      <div style="font-size:2rem">🎉</div>
-      <p style="color:#fff;font-size:1.1rem;font-weight:600">You're almost there!</p>
-      <p>Your activation code:</p>
+      <div class="status">// Authorization Granted</div>
+      <div class="label">Your activation code:</div>
       <div class="code" id="activationCode"></div>
-      <p>Send this code to our WhatsApp number to activate Jarvis:</p>
-      <a class="wa-btn" id="waLink" href="#" target="_blank">💬 Open WhatsApp & Send Code</a>
-      <p style="margin-top:1rem;font-size:0.8rem;color:#666">Code expires in 24 hours.</p>
+      <p>Transmit this code to our WhatsApp number to bring your Jarvis instance online.</p>
+      <a class="wa-btn" id="waLink" href="#" target="_blank">◈ Open WhatsApp Channel</a>
+      <p style="margin-top:1.5rem;font-size:0.7rem;font-family:'Orbitron',monospace;letter-spacing:2px;color:#4a6a80">Code expires in 24 hours</p>
     </div>
   </div>
 </section>
 
 <footer class="footer">
-  <p>Jarvis — AI assistant powered by advanced language models. Built with ❤️</p>
+  <p>J.A.R.V.I.S. // Just A Rather Very Intelligent System</p>
 </footer>
 
+</div>
+
 <script>
-async function register() {
-  const btn = document.getElementById('regBtn');
-  const err = document.getElementById('regErr');
-  err.textContent = '';
-  
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  
-  if (!name || !email || !phone) {
-    err.textContent = 'All fields are required.';
-    return;
-  }
-  if (!email.includes('@')) {
-    err.textContent = 'Please enter a valid email.';
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = 'Creating your account...';
-  
-  try {
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, phone })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      document.getElementById('formFields').style.display = 'none';
-      document.getElementById('successMsg').style.display = 'block';
-      document.getElementById('activationCode').textContent = data.activation_code;
-      
-      // WhatsApp click-to-chat link (update number when you have it)
-      const waNumber = document.body.dataset.waNumber || '';
-      if (waNumber) {
-        document.getElementById('waLink').href = `https://wa.me/${waNumber}?text=${data.activation_code}`;
-      } else {
-        document.getElementById('waLink').style.display = 'none';
-      }
-    } else {
-      err.textContent = data.error || 'Something went wrong.';
-      btn.disabled = false;
-      btn.textContent = 'Get My Activation Code →';
-    }
-  } catch (e) {
-    err.textContent = 'Connection error. Please try again.';
-    btn.disabled = false;
-    btn.textContent = 'Get My Activation Code →';
-  }
+async function register(){
+  const btn=document.getElementById('regBtn'),err=document.getElementById('regErr');
+  err.textContent='';
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const phone=document.getElementById('regPhone').value.trim();
+  if(!name||!email||!phone){err.textContent='// ALL FIELDS REQUIRED';return}
+  if(!email.includes('@')){err.textContent='// INVALID EMAIL FORMAT';return}
+  btn.disabled=true;btn.textContent='INITIALIZING...';
+  try{
+    const res=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,phone})});
+    const data=await res.json();
+    if(data.success){
+      document.getElementById('formFields').style.display='none';
+      document.getElementById('successMsg').style.display='block';
+      document.getElementById('activationCode').textContent=data.activation_code;
+      const waNum=document.body.dataset.waNumber||'';
+      if(waNum){document.getElementById('waLink').href=`https://wa.me/${waNum}?text=${data.activation_code}`}
+      else{document.getElementById('waLink').style.display='none'}
+    }else{err.textContent='// '+( data.error||'SYSTEM ERROR').toUpperCase();btn.disabled=false;btn.textContent='Generate Access Code →'}
+  }catch{err.textContent='// CONNECTION FAILURE';btn.disabled=false;btn.textContent='Generate Access Code →'}
 }
 </script>
 </body>
