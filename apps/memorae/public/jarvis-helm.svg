@@ -1,48 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <defs>
-    <linearGradient id="helm" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#c0392b"/>
-      <stop offset="50%" stop-color="#8b1a1a"/>
-      <stop offset="100%" stop-color="#5a0f0f"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f4d03f"/>
-      <stop offset="100%" stop-color="#c9a20e"/>
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="eyeGlow">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="15%" stop-color="#e0f4ff" stop-opacity="0.9"/>
+      <stop offset="30%" stop-color="#78d6ff" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#40b0ff" stop-opacity="0.5"/>
+      <stop offset="70%" stop-color="#1090e0" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#0060a0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="outerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#60c0ff" stop-opacity="0.15"/>
+      <stop offset="60%" stop-color="#3090d0" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur1"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="blur2"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="blur3"><feGaussianBlur stdDeviation="15"/></filter>
   </defs>
-  <!-- Helmet shell -->
-  <path d="M60 8 C25 8 12 40 12 70 C12 95 20 110 35 120 L40 125 L80 125 L85 120 C100 110 108 95 108 70 C108 40 95 8 60 8Z" fill="url(#helm)" stroke="#3a0808" stroke-width="1"/>
-  <!-- Face plate gold -->
-  <path d="M60 35 C40 35 30 50 28 65 L28 85 C28 95 38 108 42 112 L60 118 L78 112 C82 108 92 95 92 85 L92 65 C90 50 80 35 60 35Z" fill="url(#gold)" stroke="#8a6b0a" stroke-width="0.5"/>
-  <!-- Forehead red section -->
-  <path d="M60 8 C38 8 25 28 20 48 L40 35 L60 30 L80 35 L100 48 C95 28 82 8 60 8Z" fill="url(#helm)" stroke="#3a0808" stroke-width="0.5"/>
-  <!-- Center forehead line -->
-  <line x1="60" y1="12" x2="60" y2="32" stroke="#3a0808" stroke-width="1.5"/>
-  <!-- Eyes -->
-  <path d="M32 62 L46 56 L52 62 L46 68 Z" fill="#78d6ff" filter="url(#eyeGlow)" opacity="0.95"/>
-  <path d="M88 62 L74 56 L68 62 L74 68 Z" fill="#78d6ff" filter="url(#eyeGlow)" opacity="0.95"/>
-  <!-- Eye inner bright -->
-  <path d="M36 62 L46 58 L50 62 L46 66 Z" fill="#ffffff" opacity="0.5"/>
-  <path d="M84 62 L74 58 L70 62 L74 66 Z" fill="#ffffff" opacity="0.5"/>
-  <!-- Mouth slit -->
-  <rect x="42" y="90" width="36" height="2" rx="1" fill="#3a0808" opacity="0.6"/>
-  <!-- Mouth vents -->
-  <rect x="44" y="95" width="32" height="1.5" rx="0.75" fill="#3a0808" opacity="0.4"/>
-  <rect x="46" y="99" width="28" height="1.5" rx="0.75" fill="#3a0808" opacity="0.3"/>
-  <rect x="48" y="103" width="24" height="1.5" rx="0.75" fill="#3a0808" opacity="0.25"/>
-  <!-- Chin -->
-  <path d="M42 112 L60 118 L78 112" fill="none" stroke="#8a6b0a" stroke-width="0.5" opacity="0.5"/>
-  <!-- Side panels -->
-  <path d="M12 70 C12 50 18 35 25 25 L20 48 L15 70" fill="#5a0f0f" opacity="0.5"/>
-  <path d="M108 70 C108 50 102 35 95 25 L100 48 L105 70" fill="#5a0f0f" opacity="0.5"/>
-  <!-- Highlight -->
-  <ellipse cx="45" cy="20" rx="15" ry="6" fill="white" opacity="0.06"/>
+  <!-- Outer ambient glow -->
+  <circle cx="100" cy="100" r="95" fill="url(#outerGlow)" filter="url(#blur3)"/>
+  <!-- Outer ring glow -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#50a8d8" stroke-width="1.5" opacity="0.2" filter="url(#blur2)"/>
+  <!-- Outer ring -->
+  <circle cx="100" cy="100" r="65" fill="none" stroke="#78c8e8" stroke-width="2" opacity="0.35"/>
+  <!-- Tick marks on outer ring -->
+  <g opacity="0.3" stroke="#90d0f0" stroke-width="1.5">
+    <line x1="100" y1="33" x2="100" y2="40"/>
+    <line x1="100" y1="160" x2="100" y2="167"/>
+    <line x1="33" y1="100" x2="40" y2="100"/>
+    <line x1="160" y1="100" x2="167" y2="100"/>
+    <line x1="54" y1="54" x2="59" y2="59"/>
+    <line x1="141" y1="54" x2="146" y2="59"/>
+    <line x1="54" y1="146" x2="59" y2="141"/>
+    <line x1="141" y1="146" x2="146" y2="141"/>
+  </g>
+  <!-- Mid ring -->
+  <circle cx="100" cy="100" r="52" fill="none" stroke="#68bce0" stroke-width="1" opacity="0.25"/>
+  <!-- Inner ring glow -->
+  <circle cx="100" cy="100" r="40" fill="none" stroke="#80d0f0" stroke-width="2" opacity="0.4" filter="url(#blur1)"/>
+  <!-- Inner ring -->
+  <circle cx="100" cy="100" r="38" fill="none" stroke="#90d8f8" stroke-width="1.5" opacity="0.5"/>
+  <!-- Core spread glow -->
+  <circle cx="100" cy="100" r="35" fill="url(#coreGlow)" filter="url(#blur1)" opacity="0.7"/>
+  <!-- Core bright center -->
+  <circle cx="100" cy="100" r="24" fill="url(#coreGlow)"/>
+  <!-- Core white-hot center -->
+  <circle cx="100" cy="100" r="12" fill="white" opacity="0.6" filter="url(#blur1)"/>
+  <circle cx="100" cy="100" r="6" fill="white" opacity="0.8"/>
+  <!-- Triangular segments (like the real arc reactor) -->
+  <g opacity="0.15" fill="none" stroke="#a0e0ff" stroke-width="1">
+    <path d="M100 62 L115 85 L85 85 Z"/>
+    <path d="M100 138 L115 115 L85 115 Z"/>
+    <path d="M62 100 L85 85 L85 115 Z"/>
+    <path d="M138 100 L115 85 L115 115 Z"/>
+  </g>
+  <!-- Connector lines from core to ring -->
+  <g opacity="0.2" stroke="#80d0f0" stroke-width="0.8">
+    <line x1="100" y1="76" x2="100" y2="62"/>
+    <line x1="100" y1="124" x2="100" y2="138"/>
+    <line x1="76" y1="100" x2="62" y2="100"/>
+    <line x1="124" y1="100" x2="138" y2="100"/>
+  </g>
+  <!-- Subtle highlight -->
+  <ellipse cx="92" cy="88" rx="10" ry="8" fill="white" opacity="0.08" transform="rotate(-20 92 88)"/>
 </svg>
