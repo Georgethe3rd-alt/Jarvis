@@ -119,10 +119,33 @@
     /* Footer */
     .footer{text-align:center;padding:2rem;color:var(--text-dim);font-size:0.75rem;border-top:1px solid var(--arc-border);font-family:'Orbitron',monospace;letter-spacing:2px}
     
-    @media(max-width:600px){
+    /* QR Section */
+    .qr-section{text-align:center;padding:3rem 2rem}
+    .qr-section .qr-container{display:inline-block;background:rgba(255,255,255,0.05);border:1px solid var(--arc-border);padding:2rem;margin-top:1rem}
+    .qr-section .qr-container svg{display:block;margin:0 auto}
+    .qr-section .qr-label{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:3px;color:var(--arc-blue);margin-top:1rem;text-transform:uppercase}
+
+    @media(max-width:768px){
       .features{grid-template-columns:1fr}
       .hero{padding:1.5rem}
+      .hero h1{font-size:2rem}
+      .hero .tagline{font-size:1rem}
       .hud-corner{display:none}
+      .cta-btn{width:100%;text-align:center;padding:14px 20px}
+      .section{padding:3rem 1rem}
+      .section-title{font-size:1.2rem}
+      .signup-section{padding:0 1rem 3rem}
+      .step{gap:1rem}
+      .feat{padding:1.5rem}
+      .form-box{padding:1.5rem}
+      .form-box input{padding:12px}
+      .bg-arc{width:400px;height:400px}
+    }
+    @media(max-width:380px){
+      .hero h1{font-size:1.6rem}
+      .hero-label{font-size:0.6rem;letter-spacing:3px}
+      .step-num{width:40px;height:40px;font-size:1rem}
+      .form-box::before{font-size:0.5rem;letter-spacing:2px}
     }
   </style>
 </head>
@@ -260,6 +283,13 @@
   </div>
 </section>
 
+<section class="qr-section" id="qrSection" style="display:none">
+  <div class="divider" style="margin-bottom:3rem"></div>
+  <div class="section-title">Scan to Chat</div>
+  <div class="section-sub">// Direct WhatsApp connection</div>
+  <div class="qr-container" id="qrContainer"></div>
+</section>
+
 <footer class="footer">
   <p style="margin-bottom:0.5rem"><a href="/terms.html" style="color:var(--text-dim);text-decoration:none;margin:0 1rem">Terms of Service</a> <a href="/privacy.html" style="color:var(--text-dim);text-decoration:none;margin:0 1rem">Privacy Policy</a></p>
   <p>J.A.R.V.I.S. // Just A Rather Very Intelligent System</p>
@@ -268,6 +298,12 @@
 </div>
 
 <script>
+// Load QR code
+fetch('/api/qr').then(r=>{if(r.ok)return r.text();throw 0}).then(svg=>{
+  document.getElementById('qrContainer').innerHTML=svg+'<div class="qr-label">Open WhatsApp Camera</div>';
+  document.getElementById('qrSection').style.display='block';
+}).catch(()=>{});
+
 async function register(){
   const btn=document.getElementById('regBtn'),err=document.getElementById('regErr');
   err.textContent='';

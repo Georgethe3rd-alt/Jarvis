@@ -28,6 +28,9 @@ const { publicLimiter, authLimiter, signupPhoneLimiter } = require('./ratelimit'
 const { logError, installGlobalHandlers } = require('./monitor');
 const { startBackupScheduler } = require('./backup');
 const { sendWelcomeEmail } = require('./email');
+const { startWinbackChecker } = require('./winback');
+const { PERSONALITY_PRESETS } = require('./tenant');
+const QRCode = require('qrcode');
 
 // ─── Global Error Handlers ──────────────────────────────────
 installGlobalHandlers();
@@ -62,6 +65,27 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // ─── Sign-up API ────────────────────────────────────────────
 app.use('/api/register', signupPhoneLimiter, publicLimiter);
 app.use('/api', signupRouter);
+
+// ─── Personalities API (public) ──────────────────────────────
+app.get('/api/personalities', (req, res) => {
+  const list = Object.entries(PERSONALITY_PRESETS).map(([key, val]) => ({
+    key, name: val.name, description: val.description
+  }));
+  res.json(list);
+});
+
+// ─── QR Code API ────────────────────────────────────────────
+app.get('/api/qr', async (req, res) => {
+  try {
+    const numberRow = db.prepare("SELECT value FROM config WHERE key = 'whatsapp_business_number'").get();
+    if (!numberRow || !numberRow.value) return res.status(404).json({ error: 'No WhatsApp number configured' });
+    const url = `https://wa.me/${numberRow.value.replace(/[^\d]/g, '')}`;
+    const svg = await QRCode.toString(url, { type: 'svg', margin: 1, width: 200 });
+    res.type('image/svg+xml').send(svg);
+  } catch (err) {
+    res.status(500).json({ error: 'QR generation failed' });
+  }
+});
 
 // ─── Billing ────────────────────────────────────────────────
 app.use('/billing', billingRouter);
@@ -228,6 +252,23 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
+    // ─── Usage / Plan Command ────────────────────────────
+    const textLower = text.toLowerCase();
+    if (textLower === 'usage' || textLower === 'my plan') {
+      const plan = require('./billing').PLANS[tenant.plan || 'free'];
+      const used = tenant.messages_this_month || 0;
+      const limit = plan.messagesPerMonth === Infinity ? '∞' : plan.messagesPerMonth;
+      const resetDate = tenant.month_reset_date ? new Date(tenant.month_reset_date).toLocaleDateString() : 'the 1st of next month';
+      await sendMessage(phone,
+        `📊 *Your Plan Details*\n\n` +
+        `Plan: *${plan.name}*\n` +
+        `Messages used: ${used} / ${limit}\n` +
+        `Resets: ${resetDate}\n` +
+        `Member since: ${new Date(tenant.created_at).toLocaleDateString()}`
+      );
+      return;
+    }
+
     // ─── Billing Check ───────────────────────────────────
     if (!canSendMessage(tenant)) {
       await sendMessage(phone, getUpgradeMessage(tenant));
@@ -237,8 +278,26 @@ app.post('/webhook', async (req, res) => {
 
     // Active tenant — process normally
     try {
-      const reply = await processMessage(phone, msg.name, text);
+      let reply = await processMessage(phone, msg.name, text);
       if (reply) {
+        // ─── Usage Widget ────────────────────────────────
+        const freshTenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenant.id);
+        const used = freshTenant.messages_this_month || 0;
+        const plan = require('./billing').PLANS[freshTenant.plan || 'free'];
+        const limit = plan.messagesPerMonth;
+
+        if (limit !== Infinity) {
+          // Every 10th message: show usage
+          if (used % 10 === 0 && used > 0) {
+            reply += `\n\n_📊 ${used}/${limit} messages this month_`;
+          }
+          // At 40 messages on free plan (10 remaining): warn
+          if (used === 40 && (freshTenant.plan || 'free') === 'free') {
+            const base = require('./whatsapp').getConfig('app_base_url') || `http://localhost:${process.env.PORT || 3003}`;
+            reply += `\n\n⚠️ _You have 10 messages remaining this month. Upgrade at ${base}/billing/checkout/pro?phone=${freshTenant.phone}_`;
+          }
+        }
+
         await sendMessage(phone, reply);
         console.log(`[OUT → ${phone}] ${reply.substring(0, 80)}...`);
       }
@@ -335,14 +394,36 @@ async function handleOnboarding(tenant, phone, name, text) {
     await sendMessage(phone, `${work ? 'Got it.' : 'No problem.'}\n\nLast one: *What's the main thing you want me to help with?*\n\n(Productivity, reminders, brainstorming, daily planning — anything goes)`);
   } else if (step === 'goals') {
     const goal = text.trim();
-    db.prepare("UPDATE tenants SET onboarding_step = 'complete' WHERE id = ?").run(tenant.id);
+    db.prepare("UPDATE tenants SET onboarding_step = 'personality' WHERE id = ?").run(tenant.id);
     updateMemoryFile(tenant, 'About My Human', `Primary goal: ${goal}`);
     updateSoulFile(tenant, `User's primary use case: ${goal}. Prioritize this in suggestions and proactive help.`);
-    appendDailyNote(tenant, `Onboarding complete. Goal: ${goal}`);
+    appendDailyNote(tenant, `Goal set: ${goal}`);
+
+    const presetList = Object.entries(PERSONALITY_PRESETS).map(([key, val], i) =>
+      `*${i + 1}.* ${val.name} — ${val.description}`
+    ).join('\n');
+
+    await sendMessage(phone,
+      `Great! Last thing — pick a personality style:\n\n${presetList}\n\nJust send the number (1-6).`
+    );
+  } else if (step === 'personality') {
+    const choice = parseInt(text.trim());
+    const keys = Object.keys(PERSONALITY_PRESETS);
+    const selectedKey = (choice >= 1 && choice <= keys.length) ? keys[choice - 1] : 'default';
+    const preset = PERSONALITY_PRESETS[selectedKey];
+
+    // Write the chosen personality to SOUL.md
+    const wsPath = tenant.workspace_path || require('./tenant').getTenantDir(tenant.id);
+    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(wsPath, 'SOUL.md'), preset.soul + '\n\n## User Customizations\n');
+
+    db.prepare("UPDATE tenants SET onboarding_step = 'complete' WHERE id = ?").run(tenant.id);
+    appendDailyNote(tenant, `Onboarding complete. Personality: ${preset.name}`);
 
     const displayName = tenant.display_name || name || 'boss';
     await sendMessage(phone,
-      `Perfect. Onboarding complete. ✅\n\n` +
+      `${preset.name} mode activated. ✅\n\n` +
       `Here's what I can do, ${displayName}:\n\n` +
       `🧠 *Total Recall* — Tell me anything. I never forget.\n` +
       `⏰ *Reminders* — "Remind me to call Mom at 5pm"\n` +
@@ -351,7 +432,7 @@ async function handleOnboarding(tenant, phone, name, text) {
       `📊 *Daily Briefing* — "Set my daily briefing for 8am"\n` +
       `📨 *Sharing* — "Send my grocery list to +1868..."\n\n` +
       `Everything is private — your own isolated workspace.\n\n` +
-      `I'm yours to customize. Just say "be more casual", "speak French", or whatever suits you.\n\n` +
+      `I'm yours to customize anytime. Just say "be more casual", "speak French", or whatever suits you.\n\n` +
       `What can I help you with first?`
     );
   }
@@ -371,4 +452,5 @@ app.listen(PORT, '0.0.0.0', () => {
   startReminderChecker();
   startBriefingChecker();
   startBackupScheduler();
+  startWinbackChecker();
 });

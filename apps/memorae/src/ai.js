@@ -114,6 +114,10 @@ When the user asks to remind someone else at another phone number, use send_to_c
 When the user asks to set a daily briefing time, use set_briefing_time.
 When the user asks you to change your personality, tone, language, or name — use update_soul to persist that change.
 
+LANGUAGE DETECTION:
+- Detect the language the user writes in and respond in the same language. If they switch languages mid-conversation, follow their lead.
+- If the user says "speak to me in [language]", switch to that language and save it as a preference via update_soul action.
+
 You can include multiple action blocks. Keep your spoken reply natural and concise.`;
 
   // Build messages array with proper alternation

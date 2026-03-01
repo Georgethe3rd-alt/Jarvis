@@ -45,7 +45,18 @@ button.secondary{background:transparent;border:1px solid var(--border);color:var
 .plan-card.current{border-color:var(--accent);background:rgba(0,212,255,.05)}
 .plan-card .price{font-size:1.5em;color:var(--accent);font-weight:bold}
 .plan-card .tier{font-size:.85em;color:var(--dim);margin:4px 0 12px}
-@media(max-width:768px){.app{grid-template-columns:1fr}.sidebar{display:none}}
+.hamburger{display:none;position:fixed;top:10px;left:10px;z-index:1001;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;cursor:pointer;color:var(--accent);font-size:18px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999}
+@media(max-width:768px){
+  .hamburger{display:block}
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform 0.3s;width:240px}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .main{padding:16px;padding-top:50px}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .plan-cards{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -70,6 +81,8 @@ button.secondary{background:transparent;border:1px solid var(--border);color:var
 
 <!-- App -->
 <div id="app" class="app hidden">
+  <div class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open')">☰</div>
+  <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.toggle('open');this.classList.toggle('open')"></div>
   <div class="sidebar">
     <h2>🤖 JARVIS</h2>
     <a href="#" onclick="showTab('overview')" class="active" data-tab="overview">📊 Overview</a>
@@ -146,6 +159,7 @@ function logout() {
 }
 
 function showTab(tab) {
+  if(window.innerWidth<=768){document.querySelector('.sidebar').classList.remove('open');document.querySelector('.sidebar-overlay').classList.remove('open')}
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
   const mc = document.getElementById('mainContent');
   switch(tab) {
@@ -221,7 +235,21 @@ function renderSettings(el) {
       <p style="font-size:.85em;color:var(--dim);margin-bottom:12px">Current: ${profile.briefingTime || 'Not set'}</p>
       <input id="briefingInput" placeholder="e.g. 8am, 09:00, 7:30pm" style="width:auto;display:inline-block;margin-right:8px">
       <button onclick="updateBriefing()" style="width:auto;display:inline-block;padding:12px 20px">Set</button>
+    </div>
+    <div class="card"><h3>Export Your Data</h3>
+      <p style="font-size:.85em;color:var(--dim);margin-bottom:12px">Download all your data stored by Jarvis.</p>
+      <button onclick="exportData('json')" style="width:auto;display:inline-block;padding:12px 20px;margin-right:8px">📦 Export JSON</button>
+      <button onclick="exportData('csv')" class="secondary" style="width:auto;display:inline-block;padding:12px 20px">📊 Export CSV</button>
     </div>`;
+}
+function exportData(format) {
+  const a = document.createElement('a');
+  a.href = API + '/export/' + format;
+  a.setAttribute('download', '');
+  // Add auth via a temporary form or use fetch
+  fetch(API + '/export/' + format, { headers: { Authorization: 'Bearer ' + token } })
+    .then(r => r.blob())
+    .then(blob => { const url = URL.createObjectURL(blob); a.href = url; a.download = 'jarvis-export.' + format; a.click(); URL.revokeObjectURL(url); });
 }
 
 async function updateName() {

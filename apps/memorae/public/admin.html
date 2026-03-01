@@ -53,6 +53,20 @@
     .tab.active{background:#00d4aa;color:#0a0a0a;border-color:#00d4aa}
     .back{color:#00d4aa;cursor:pointer;font-size:13px;margin-bottom:1rem;display:inline-block}
     .hidden{display:none!important}
+    /* Hamburger */
+    .hamburger{display:none;position:fixed;top:10px;left:10px;z-index:1001;background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:8px 12px;cursor:pointer;color:#00d4aa;font-size:18px}
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999}
+    @media(max-width:768px){
+      .hamburger{display:block}
+      .sidebar{transform:translateX(-100%);transition:transform 0.3s;z-index:1000;width:240px}
+      .sidebar.open{transform:translateX(0)}
+      .sidebar-overlay.open{display:block}
+      .main{margin-left:0;padding:1rem;padding-top:50px}
+      .grid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+      table{display:block;overflow-x:auto;white-space:nowrap}
+      .card .value{font-size:1.4rem}
+      .row{flex-direction:column}
+    }
   </style>
 </head>
 <body>
@@ -62,13 +76,16 @@
     <h1>🤖 Jarvis Admin</h1>
     <input id="username" placeholder="Username" autocomplete="username">
     <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <input id="totpInput" type="text" placeholder="2FA Code (if enabled)" autocomplete="one-time-code" style="display:none">
     <button class="btn" style="width:100%" onclick="login()">Sign In</button>
     <div class="error" id="loginErr"></div>
   </div>
 </div>
 
 <div class="app" id="appView">
-  <div class="sidebar">
+  <div class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar" id="sidebar">
     <h2>🤖 Jarvis</h2>
     <a onclick="nav('dash')" id="n-dash" class="active">📊 Dashboard</a>
     <a onclick="nav('tenants')" id="n-tenants">👥 Tenants</a>
@@ -78,6 +95,7 @@
     <a onclick="nav('analytics')" id="n-analytics">📊 Analytics</a>
     <a onclick="nav('errors')" id="n-errors">🚨 Errors</a>
     <a onclick="nav('backups')" id="n-backups">💾 Backups</a>
+    <a onclick="nav('security')" id="n-security">🔐 Security</a>
     <a class="logout" onclick="logout()">🚪 Logout</a>
   </div>
   <div class="main">
@@ -184,6 +202,31 @@
       <tbody id="errorsList"></tbody></table>
     </div>
 
+    <!-- Security / 2FA -->
+    <div id="p-security" class="hidden">
+      <h1>🔐 Security</h1>
+      <div class="config-box">
+        <h3>Two-Factor Authentication (TOTP)</h3>
+        <div id="2faStatus">Loading...</div>
+        <div id="2faSetup" class="hidden" style="margin-top:12px">
+          <p style="color:#888;font-size:13px;margin-bottom:8px">Scan this with your authenticator app (Google Authenticator, Authy, etc):</p>
+          <div style="background:#fff;display:inline-block;padding:8px;border-radius:8px;margin-bottom:8px" id="2faQR"></div>
+          <p style="font-family:monospace;font-size:12px;color:#888;margin:8px 0">Secret: <code id="2faSecret" style="color:#00d4aa;user-select:all"></code></p>
+          <div class="row" style="max-width:400px">
+            <input id="2faCode" placeholder="Enter 6-digit code to verify">
+            <button class="btn" onclick="enable2FA()">Enable 2FA</button>
+          </div>
+        </div>
+      </div>
+      <div class="config-box">
+        <h3>Change Password</h3>
+        <input id="curPass" type="password" placeholder="Current password" style="max-width:400px">
+        <input id="newPass" type="password" placeholder="New password" style="max-width:400px">
+        <button class="btn" onclick="changePass()">Update Password</button>
+        <div id="passMsg" style="margin-top:8px;font-size:13px"></div>
+      </div>
+    </div>
+
     <!-- Backups -->
     <div id="p-backups" class="hidden">
       <h1>💾 Database Backups</h1>
@@ -207,11 +250,12 @@ async function api(p,o={}){
 }
 
 async function login(){
-  const u=document.getElementById('username').value,p=document.getElementById('password').value;
+  const u=document.getElementById('username').value,p=document.getElementById('password').value,t=document.getElementById('totpInput').value;
   try{
-    const r=await fetch(A+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const r=await fetch(A+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,totp:t||undefined})});
     const d=await r.json();
     if(d.token){token=d.token;localStorage.setItem('jt',token);showApp()}
+    else if(d.requires2FA){document.getElementById('totpInput').style.display='block';document.getElementById('loginErr').textContent='Enter your 2FA code'}
     else document.getElementById('loginErr').textContent=d.error||'Failed';
   }catch{document.getElementById('loginErr').textContent='Connection error'}
 }
@@ -219,8 +263,13 @@ async function login(){
 function logout(){token=null;localStorage.removeItem('jt');location.reload()}
 function showApp(){document.getElementById('loginView').style.display='none';document.getElementById('appView').style.display='block';nav('dash')}
 
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
 function nav(p){
-  ['dash','tenants','tenant','signups','config','usage','analytics','errors','backups'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
+  if(window.innerWidth<=768)toggleSidebar();
+  ['dash','tenants','tenant','signups','config','usage','analytics','errors','backups','security'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
   document.getElementById('p-'+p).classList.remove('hidden');
@@ -232,6 +281,7 @@ function nav(p){
   if(p==='analytics')loadAnalytics();
   if(p==='errors')loadErrors();
   if(p==='backups')loadBackups();
+  if(p==='security')loadSecurity();
 }
 
 async function loadDash(){
@@ -466,6 +516,48 @@ async function triggerBackup(){
   const r=await api('/backups/now',{method:'POST'});
   if(r&&r.success){document.getElementById('backupMsg').textContent='✅ '+r.filename;loadBackups()}
   else document.getElementById('backupMsg').textContent='❌ Failed';
+}
+
+let tfaSecret='';
+async function loadSecurity(){
+  const s=await api('/2fa/status');if(!s)return;
+  const el=document.getElementById('2faStatus');
+  const setup=document.getElementById('2faSetup');
+  if(s.enabled){
+    el.innerHTML='<span class="badge b-green">2FA Enabled</span> <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="disable2FA()">Disable 2FA</button>';
+    setup.classList.add('hidden');
+  }else{
+    el.innerHTML='<span class="badge b-yellow">2FA Not Enabled</span> <button class="btn btn-sm" style="margin-left:8px" onclick="setup2FA()">Set Up 2FA</button>';
+    setup.classList.add('hidden');
+  }
+}
+async function setup2FA(){
+  const r=await api('/2fa/setup');if(!r)return;
+  tfaSecret=r.secret;
+  document.getElementById('2faSecret').textContent=r.secret;
+  // Simple text-based display since we can't render QR client-side easily
+  document.getElementById('2faQR').innerHTML='<p style="color:#000;font-size:12px;max-width:280px;word-break:break-all">'+r.uri+'</p>';
+  document.getElementById('2faSetup').classList.remove('hidden');
+}
+async function enable2FA(){
+  const code=document.getElementById('2faCode').value;
+  if(!code||!tfaSecret)return;
+  const r=await api('/2fa/enable',{method:'POST',body:JSON.stringify({secret:tfaSecret,code})});
+  if(r&&r.success){alert('2FA enabled!');loadSecurity()}
+  else alert(r?.error||'Failed to enable 2FA');
+}
+async function disable2FA(){
+  if(!confirm('Disable 2FA?'))return;
+  await api('/2fa/disable',{method:'POST',body:'{}'});
+  loadSecurity();
+}
+async function changePass(){
+  const cur=document.getElementById('curPass').value;
+  const nw=document.getElementById('newPass').value;
+  if(!cur||!nw)return;
+  const r=await api('/password',{method:'PUT',body:JSON.stringify({currentPassword:cur,newPassword:nw})});
+  document.getElementById('passMsg').textContent=r&&r.success?'✅ Password updated':'❌ '+(r?.error||'Failed');
+  if(r&&r.success){document.getElementById('curPass').value='';document.getElementById('newPass').value='';}
 }
 </script>
 </body>

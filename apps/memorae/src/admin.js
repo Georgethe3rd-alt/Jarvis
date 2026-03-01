@@ -1,12 +1,18 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { TOTP, Secret } = require('otpauth');
 const db = require('./db');
 const path = require('path');
 const fs = require('fs');
 
 const router = express.Router();
 const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'change-me-in-production';
+
+// ─── 2FA Migration ──────────────────────────────────────────
+const adminCols = db.prepare("PRAGMA table_info(admin_users)").all().map(c => c.name);
+if (!adminCols.includes('totp_secret')) db.exec("ALTER TABLE admin_users ADD COLUMN totp_secret TEXT");
+if (!adminCols.includes('totp_enabled')) db.exec("ALTER TABLE admin_users ADD COLUMN totp_enabled INTEGER DEFAULT 0");
 
 // Initialize default admin
 function initAdmin() {
@@ -34,11 +40,20 @@ function auth(req, res, next) {
 
 // Login
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, totp } = req.body;
   const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
+
+  // Check 2FA if enabled
+  if (user.totp_enabled && user.totp_secret) {
+    if (!totp) return res.status(401).json({ error: '2FA code required', requires2FA: true });
+    const totpObj = new TOTP({ secret: Secret.fromBase32(user.totp_secret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const delta = totpObj.validate({ token: totp, window: 1 });
+    if (delta === null) return res.status(401).json({ error: 'Invalid 2FA code' });
+  }
+
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
   res.json({ token, username: user.username });
 });
@@ -247,6 +262,40 @@ router.post('/backups/now', auth, (req, res) => {
   const filename = runBackup();
   if (filename) res.json({ success: true, filename });
   else res.status(500).json({ error: 'Backup failed' });
+});
+
+// ─── 2FA Management ─────────────────────────────────────────
+router.get('/2fa/setup', auth, (req, res) => {
+  const secret = new Secret({ size: 20 });
+  const totp = new TOTP({
+    issuer: 'Jarvis Admin',
+    label: req.admin.username,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret
+  });
+  res.json({ secret: secret.base32, uri: totp.toString() });
+});
+
+router.post('/2fa/enable', auth, (req, res) => {
+  const { secret, code } = req.body;
+  if (!secret || !code) return res.status(400).json({ error: 'Secret and code required' });
+  const totp = new TOTP({ secret: Secret.fromBase32(secret), algorithm: 'SHA1', digits: 6, period: 30 });
+  const delta = totp.validate({ token: code, window: 1 });
+  if (delta === null) return res.status(400).json({ error: 'Invalid code — try again' });
+  db.prepare('UPDATE admin_users SET totp_secret = ?, totp_enabled = 1 WHERE id = ?').run(secret, req.admin.id);
+  res.json({ success: true });
+});
+
+router.post('/2fa/disable', auth, (req, res) => {
+  db.prepare('UPDATE admin_users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?').run(req.admin.id);
+  res.json({ success: true });
+});
+
+router.get('/2fa/status', auth, (req, res) => {
+  const user = db.prepare('SELECT totp_enabled FROM admin_users WHERE id = ?').get(req.admin.id);
+  res.json({ enabled: !!user?.totp_enabled });
 });
 
 // Change password

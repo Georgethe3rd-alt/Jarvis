@@ -131,4 +131,37 @@ router.put('/settings/name', userAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ─── Data Export: JSON ───────────────────────────────────────
+router.get('/export/json', userAuth, (req, res) => {
+  const tid = req.user.tenantId;
+  const tenant = db.prepare('SELECT id, phone, name, display_name, plan, created_at, last_active FROM tenants WHERE id = ?').get(tid);
+  const memories = db.prepare('SELECT content, category, pinned, created_at FROM memories WHERE tenant_id = ? ORDER BY created_at DESC').all(tid);
+  const reminders = db.prepare('SELECT content, remind_at, recurring, sent, created_at FROM reminders WHERE tenant_id = ? ORDER BY created_at DESC').all(tid);
+  const conversations = db.prepare('SELECT role, content, created_at FROM conversations WHERE tenant_id = ? ORDER BY created_at ASC').all(tid);
+
+  const data = { exportedAt: new Date().toISOString(), profile: tenant, memories, reminders, conversations };
+  res.setHeader('Content-Disposition', 'attachment; filename="jarvis-export.json"');
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(data, null, 2));
+});
+
+// ─── Data Export: CSV ────────────────────────────────────────
+router.get('/export/csv', userAuth, (req, res) => {
+  const tid = req.user.tenantId;
+  const memories = db.prepare('SELECT content, category, pinned, created_at FROM memories WHERE tenant_id = ? ORDER BY created_at DESC').all(tid);
+  const reminders = db.prepare('SELECT content, remind_at, recurring, sent, created_at FROM reminders WHERE tenant_id = ? ORDER BY created_at DESC').all(tid);
+
+  let csv = 'Type,Content,Category/Due,Status,Created\n';
+  for (const m of memories) {
+    csv += `Memory,"${(m.content || '').replace(/"/g, '""')}",${m.category},${m.pinned ? 'Pinned' : ''},${m.created_at}\n`;
+  }
+  for (const r of reminders) {
+    csv += `Reminder,"${(r.content || '').replace(/"/g, '""')}",${r.remind_at},${r.sent ? 'Sent' : 'Pending'},${r.created_at}\n`;
+  }
+
+  res.setHeader('Content-Disposition', 'attachment; filename="jarvis-export.csv"');
+  res.setHeader('Content-Type', 'text/csv');
+  res.send(csv);
+});
+
 module.exports = router;
