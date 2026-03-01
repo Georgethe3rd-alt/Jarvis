@@ -72,6 +72,7 @@
     <h2>🤖 Jarvis</h2>
     <a onclick="nav('dash')" id="n-dash" class="active">📊 Dashboard</a>
     <a onclick="nav('tenants')" id="n-tenants">👥 Tenants</a>
+    <a onclick="nav('signups')" id="n-signups">📝 Signups</a>
     <a onclick="nav('config')" id="n-config">🔑 API Keys</a>
     <a onclick="nav('usage')" id="n-usage">📈 Usage</a>
     <a class="logout" onclick="logout()">🚪 Logout</a>
@@ -107,6 +108,23 @@
       <div id="t-rems" class="hidden"></div>
       <div id="t-files" class="hidden"></div>
       <div id="t-settings" class="hidden"></div>
+    </div>
+
+    <!-- Signups -->
+    <div id="p-signups" class="hidden">
+      <h1>Signups & Activation Codes</h1>
+      <div class="config-box">
+        <h3>Generate Activation Code (Manual)</h3>
+        <div class="row">
+          <input id="genName" placeholder="Name">
+          <input id="genEmail" placeholder="Email (optional)">
+          <input id="genPhone" placeholder="Phone (with country code)">
+          <button class="btn" onclick="genCode()">Generate</button>
+        </div>
+        <div id="genResult" style="margin-top:8px;color:#00d4aa;font-size:13px"></div>
+      </div>
+      <table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Code</th><th>Status</th><th>Created</th><th>Expires</th></tr></thead>
+      <tbody id="signupsList"></tbody></table>
     </div>
 
     <!-- Config -->
@@ -172,12 +190,13 @@ function logout(){token=null;localStorage.removeItem('jt');location.reload()}
 function showApp(){document.getElementById('loginView').style.display='none';document.getElementById('appView').style.display='block';nav('dash')}
 
 function nav(p){
-  ['dash','tenants','tenant','config','usage'].forEach(x=>document.getElementById('p-'+x).classList.add('hidden'));
+  ['dash','tenants','tenant','signups','config','usage'].forEach(x=>document.getElementById('p-'+x).classList.add('hidden'));
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
   document.getElementById('p-'+p).classList.remove('hidden');
   if(p==='dash')loadDash();
   if(p==='tenants')loadTenants();
+  if(p==='signups')loadSignups();
   if(p==='config')loadCfg();
   if(p==='usage')loadUsage();
 }
@@ -190,6 +209,7 @@ async function loadDash(){
     <div class="card"><div class="label">Total Messages</div><div class="value">${s.conversations}</div></div>
     <div class="card"><div class="label">Memories</div><div class="value">${s.memories}</div></div>
     <div class="card"><div class="label">Pending Reminders</div><div class="value">${s.reminders}</div></div>
+    <div class="card"><div class="label">Pending Signups</div><div class="value">${s.pendingSignups}</div></div>
     <div class="card"><div class="label">Tokens Today</div><div class="value">${(s.todayTokens/1000).toFixed(1)}k</div></div>
     <div class="card"><div class="label">Tokens Total</div><div class="value">${(s.totalTokens/1000).toFixed(1)}k</div></div>`;
 }
@@ -309,6 +329,32 @@ async function loadUsage(){
   const u=await api('/usage');if(!u)return;
   document.getElementById('usageList').innerHTML=u.map(d=>`
     <tr><td>${d.day}</td><td>${d.requests}</td><td>${d.input.toLocaleString()}</td><td>${d.output.toLocaleString()}</td><td>${(d.input+d.output).toLocaleString()}</td></tr>`).join('');
+}
+
+async function loadSignups(){
+  const s=await api('/signups');if(!s)return;
+  document.getElementById('signupsList').innerHTML=s.map(x=>{
+    const expired=new Date(x.expires_at)<new Date();
+    const st=x.status==='activated'?'b-green':expired?'b-red':'b-yellow';
+    const label=x.status==='activated'?'Activated':expired?'Expired':'Pending';
+    return `<tr><td>${x.id}</td><td>${esc(x.name)}</td><td>${esc(x.email)}</td><td>${x.phone}</td>
+    <td style="font-family:monospace;font-weight:700;letter-spacing:2px">${x.activation_code}</td>
+    <td><span class="badge ${st}">${label}</span></td>
+    <td>${new Date(x.created_at).toLocaleString()}</td><td>${new Date(x.expires_at).toLocaleString()}</td></tr>`;
+  }).join('');
+}
+
+async function genCode(){
+  const name=document.getElementById('genName').value;
+  const email=document.getElementById('genEmail').value;
+  const phone=document.getElementById('genPhone').value;
+  if(!name||!phone)return alert('Name and phone required');
+  const r=await api('/signups/generate',{method:'POST',body:JSON.stringify({name,email,phone})});
+  if(r&&r.code){
+    document.getElementById('genResult').textContent='Code: '+r.code+' (expires: '+new Date(r.expires_at).toLocaleString()+')';
+    document.getElementById('genName').value='';document.getElementById('genEmail').value='';document.getElementById('genPhone').value='';
+    loadSignups();
+  }
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}

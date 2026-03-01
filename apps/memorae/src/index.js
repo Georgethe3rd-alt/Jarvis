@@ -4,15 +4,17 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure directories
 ['data', 'data/tenants', 'public'].forEach(d => {
   const p = path.join(__dirname, '..', d);
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 });
 
+const db = require('./db');
 const { verifyWebhook, parseWebhook, sendMessage, markAsRead } = require('./whatsapp');
 const { processMessage } = require('./ai');
+const { provisionTenant } = require('./tenant');
 const adminRouter = require('./admin');
+const { router: signupRouter, normalizePhone } = require('./signup');
 const { startReminderChecker } = require('./reminders');
 
 const app = express();
@@ -21,34 +23,95 @@ const PORT = process.env.PORT || 3003;
 app.use(cors());
 app.use(express.json());
 
+// ─── Landing Page ───────────────────────────────────────────
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ─── Sign-up API ────────────────────────────────────────────
+app.use('/api', signupRouter);
+
 // ─── WhatsApp Webhook ───────────────────────────────────────
 app.get('/webhook', verifyWebhook);
 
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200); // Always respond fast
+  res.sendStatus(200);
 
   const msg = parseWebhook(req.body);
   if (!msg || !msg.text) return;
 
-  // Only handle text messages for now
   if (msg.type !== 'text') {
     await sendMessage(msg.from, "I can read text messages for now — voice and images coming soon! 🤖");
     return;
   }
 
-  console.log(`[IN] ${msg.from} (${msg.name}): ${msg.text}`);
+  const phone = msg.from;
+  const text = msg.text.trim();
+
+  console.log(`[IN] ${phone} (${msg.name}): ${text}`);
   markAsRead(msg.messageId);
 
-  try {
-    const reply = await processMessage(msg.from, msg.name, msg.text);
-    if (reply) {
-      await sendMessage(msg.from, reply);
-      console.log(`[OUT → ${msg.from}] ${reply.substring(0, 80)}...`);
+  // Check if this is an active tenant
+  const tenant = db.prepare('SELECT * FROM tenants WHERE phone = ? AND status = ?').get(phone, 'active');
+
+  if (tenant) {
+    // Active tenant — process normally
+    try {
+      const reply = await processMessage(phone, msg.name, text);
+      if (reply) {
+        await sendMessage(phone, reply);
+        console.log(`[OUT → ${phone}] ${reply.substring(0, 80)}...`);
+      }
+    } catch (err) {
+      console.error('[ERROR]', err);
+      await sendMessage(phone, "Something went wrong on my end. Try again in a moment. 🤖");
     }
-  } catch (err) {
-    console.error('[ERROR]', err);
-    await sendMessage(msg.from, "Something went wrong on my end. Try again in a moment. 🤖");
+    return;
   }
+
+  // Not an active tenant — check if they're sending an activation code
+  const codeMatch = text.match(/^\d{6}$/);
+  if (codeMatch) {
+    const code = codeMatch[0];
+    const signup = db.prepare(
+      "SELECT * FROM signups WHERE phone = ? AND activation_code = ? AND status = 'pending' AND expires_at > datetime('now')"
+    ).get(phone, code);
+
+    if (signup) {
+      // Activate!
+      db.prepare("UPDATE signups SET status = 'activated', activated_at = CURRENT_TIMESTAMP WHERE id = ?").run(signup.id);
+      const newTenant = provisionTenant(phone, signup.name);
+      db.prepare('UPDATE tenants SET email = ? WHERE id = ?').run(signup.email, newTenant.id);
+
+      console.log(`[ACTIVATE] ${signup.name} (${phone}) → Tenant #${newTenant.id}`);
+
+      await sendMessage(phone,
+        `✅ Welcome aboard, ${signup.name}! I'm Jarvis, your personal AI assistant.\n\n` +
+        `Here's what I can do:\n` +
+        `🧠 *Remember things* — Tell me anything to save to memory\n` +
+        `⏰ *Set reminders* — "Remind me to call Mom at 5pm"\n` +
+        `📋 *Organize* — I'll categorize and recall your info\n` +
+        `💬 *Chat* — Ask me anything, brainstorm, draft messages\n\n` +
+        `Everything you tell me is private and stored in your personal workspace. Let's get started — what can I help you with?`
+      );
+      return;
+    }
+
+    // Invalid or expired code
+    await sendMessage(phone,
+      "❌ That activation code is invalid or expired.\n\n" +
+      "Visit our website to sign up and get a new code, then send it here to activate your assistant."
+    );
+    return;
+  }
+
+  // Unknown user, no valid code
+  await sendMessage(phone,
+    "👋 Hey there! I'm Jarvis, a personal AI assistant.\n\n" +
+    "To get started, you need to sign up first:\n" +
+    "1️⃣ Visit our website and register\n" +
+    "2️⃣ You'll receive a 6-digit activation code\n" +
+    "3️⃣ Send that code here to activate\n\n" +
+    "Already have a code? Just send it now!"
+  );
 });
 
 // ─── Admin Console ──────────────────────────────────────────
@@ -58,14 +121,9 @@ app.get('/admin/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'publi
 
 // ─── Health ─────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  const db = require('./db');
   const tenants = db.prepare('SELECT COUNT(*) as c FROM tenants').get().c;
-  res.json({
-    status: 'ok',
-    uptime: process.uptime(),
-    tenants,
-    timestamp: new Date().toISOString()
-  });
+  const pendingSignups = db.prepare("SELECT COUNT(*) as c FROM signups WHERE status = 'pending'").get().c;
+  res.json({ status: 'ok', uptime: process.uptime(), tenants, pendingSignups, timestamp: new Date().toISOString() });
 });
 
 // ─── Start ──────────────────────────────────────────────────
@@ -73,6 +131,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('  🤖 JARVIS — Multi-Tenant AI Assistant');
   console.log('  ─────────────────────────────────────');
+  console.log(`  🌐 Landing Page     : http://0.0.0.0:${PORT}`);
   console.log(`  📱 WhatsApp Webhook : http://0.0.0.0:${PORT}/webhook`);
   console.log(`  🔧 Admin Console    : http://0.0.0.0:${PORT}/admin`);
   console.log(`  💚 Health Check     : http://0.0.0.0:${PORT}/health`);

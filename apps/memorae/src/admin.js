@@ -50,9 +50,10 @@ router.get('/stats', auth, (req, res) => {
   const memories = db.prepare('SELECT COUNT(*) as c FROM memories').get().c;
   const reminders = db.prepare('SELECT COUNT(*) as c FROM reminders WHERE sent = 0').get().c;
   const conversations = db.prepare('SELECT COUNT(*) as c FROM conversations').get().c;
+  const pendingSignups = db.prepare("SELECT COUNT(*) as c FROM signups WHERE status = 'pending' AND expires_at > datetime('now')").get().c;
   const todayTokens = db.prepare("SELECT COALESCE(SUM(input_tokens + output_tokens), 0) as t FROM usage_log WHERE created_at > datetime('now', '-1 day')").get().t;
   const totalTokens = db.prepare('SELECT COALESCE(SUM(input_tokens + output_tokens), 0) as t FROM usage_log').get().t;
-  res.json({ tenants, active, memories, reminders, conversations, todayTokens, totalTokens });
+  res.json({ tenants, active, memories, reminders, conversations, pendingSignups, todayTokens, totalTokens });
 });
 
 // Tenants list
@@ -134,6 +135,30 @@ router.put('/config', auth, (req, res) => {
 router.delete('/config/:key', auth, (req, res) => {
   db.prepare('DELETE FROM config WHERE key = ?').run(req.params.key);
   res.json({ success: true });
+});
+
+// Signups
+router.get('/signups', auth, (req, res) => {
+  const signups = db.prepare('SELECT * FROM signups ORDER BY created_at DESC LIMIT 200').all();
+  res.json(signups);
+});
+
+router.delete('/signups/:id', auth, (req, res) => {
+  db.prepare('DELETE FROM signups WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Manually create activation code (admin-generated)
+router.post('/signups/generate', auth, (req, res) => {
+  const { name, email, phone } = req.body;
+  if (!name || !phone) return res.status(400).json({ error: 'Name and phone required' });
+  const crypto = require('crypto');
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days for admin-generated
+  const normalizedPhone = phone.replace(/[^\d]/g, '');
+  db.prepare('INSERT INTO signups (name, email, phone, activation_code, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .run(name, email || '', normalizedPhone, code, expiresAt);
+  res.json({ success: true, code, expires_at: expiresAt });
 });
 
 // Usage stats

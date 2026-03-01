@@ -15,6 +15,6 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.0",
     "cors": "^2.8.5",
-    "@anthropic-ai/sdk": "^0.78.0"
+    "anthropic": "^0.30.0"
   }
 }

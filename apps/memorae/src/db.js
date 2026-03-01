@@ -9,16 +9,30 @@ const db = new Database(path.join(dataDir, 'jarvis.db'));
 db.pragma('journal_mode = WAL');
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS signups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    activation_code TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    expires_at DATETIME NOT NULL,
+    activated_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS tenants (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     phone TEXT UNIQUE NOT NULL,
     name TEXT,
+    email TEXT,
     display_name TEXT,
     status TEXT DEFAULT 'active',
     workspace_path TEXT,
     model TEXT DEFAULT 'claude-sonnet-4-5-20250514',
     max_tokens INTEGER DEFAULT 4096,
     system_prompt TEXT,
+    plan TEXT DEFAULT 'free',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
     message_count INTEGER DEFAULT 0,

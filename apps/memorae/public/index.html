@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis — Your Personal AI Assistant on WhatsApp</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0;overflow-x:hidden}
+    
+    /* Hero */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;position:relative}
+    .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(0,212,170,0.08) 0%,transparent 70%);pointer-events:none}
+    .logo{font-size:3rem;margin-bottom:0.5rem}
+    .hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,#00d4aa,#00b4d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{font-size:1.1rem;color:#999;max-width:500px;margin-bottom:2rem;line-height:1.6}
+    .hero .sub{font-size:0.9rem;color:#666}
+    
+    /* Features */
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;max-width:900px;margin:0 auto 4rem;padding:0 2rem}
+    .feat{background:#111;border:1px solid #222;border-radius:12px;padding:1.5rem;text-align:center}
+    .feat .icon{font-size:2rem;margin-bottom:0.5rem}
+    .feat h3{font-size:1rem;margin-bottom:0.5rem;color:#00d4aa}
+    .feat p{font-size:0.85rem;color:#888;line-height:1.5}
+    
+    /* How it works */
+    .how{max-width:700px;margin:0 auto 4rem;padding:0 2rem}
+    .how h2{text-align:center;font-size:1.8rem;margin-bottom:2rem;color:#fff}
+    .steps{display:flex;flex-direction:column;gap:1.5rem}
+    .step{display:flex;align-items:flex-start;gap:1rem}
+    .step-num{flex-shrink:0;width:40px;height:40px;background:#00d4aa;color:#0a0a0a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem}
+    .step-text h3{font-size:1rem;margin-bottom:4px}
+    .step-text p{font-size:0.85rem;color:#888;line-height:1.5}
+    
+    /* Sign up form */
+    .signup-section{max-width:440px;margin:0 auto;padding:0 2rem 4rem}
+    .signup-section h2{text-align:center;font-size:1.8rem;margin-bottom:0.5rem}
+    .signup-section .sub{text-align:center;color:#888;margin-bottom:2rem;font-size:0.9rem}
+    .form-box{background:#111;border:1px solid #222;border-radius:16px;padding:2rem}
+    .form-box input{width:100%;padding:14px 16px;margin-bottom:12px;background:#0a0a0a;border:1px solid #333;border-radius:10px;color:#e0e0e0;font-size:15px;font-family:inherit;transition:border 0.2s}
+    .form-box input:focus{outline:none;border-color:#00d4aa}
+    .form-box input::placeholder{color:#555}
+    .form-box .phone-hint{font-size:11px;color:#666;margin:-8px 0 12px 4px}
+    .form-box button{width:100%;padding:14px;background:linear-gradient(135deg,#00d4aa,#00b4d8);color:#0a0a0a;border:none;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer;transition:opacity 0.2s}
+    .form-box button:hover{opacity:0.9}
+    .form-box button:disabled{opacity:0.5;cursor:not-allowed}
+    .error{color:#ff6b6b;text-align:center;margin-top:10px;font-size:13px}
+    .success-msg{display:none;text-align:center;padding:1.5rem 0}
+    .success-msg .code{font-size:2.5rem;font-weight:800;color:#00d4aa;letter-spacing:8px;margin:1rem 0}
+    .success-msg p{color:#999;font-size:0.9rem;line-height:1.6}
+    .success-msg .wa-btn{display:inline-block;margin-top:1rem;padding:12px 24px;background:#25D366;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}
+    
+    /* Footer */
+    .footer{text-align:center;padding:2rem;color:#444;font-size:0.8rem;border-top:1px solid #1a1a1a}
+    
+    @media(max-width:600px){
+      .features{grid-template-columns:1fr}
+      .hero{padding:1.5rem}
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="logo">🤖</div>
+  <h1>Meet Jarvis.<br>Your AI assistant<br>on WhatsApp.</h1>
+  <p>A personal AI that remembers everything, sets reminders, organizes your life — all through a simple WhatsApp message.</p>
+  <a href="#signup" style="padding:14px 32px;background:linear-gradient(135deg,#00d4aa,#00b4d8);color:#0a0a0a;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Get Started Free →</a>
+  <div class="sub" style="margin-top:1rem">No app to download. No login to remember. Just WhatsApp.</div>
+</section>
+
+<section class="features">
+  <div class="feat">
+    <div class="icon">🧠</div>
+    <h3>Infinite Memory</h3>
+    <p>Tell Jarvis anything — names, ideas, passwords, recipes — and recall it anytime with a simple question.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">⏰</div>
+    <h3>Smart Reminders</h3>
+    <p>"Remind me to call the dentist Thursday at 2pm." Jarvis handles it. Never forget again.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">📋</div>
+    <h3>Lists & Organization</h3>
+    <p>Shopping lists, project tasks, bucket lists — Jarvis categorizes and manages everything for you.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">💬</div>
+    <h3>Ask Anything</h3>
+    <p>Powered by advanced AI. Brainstorm ideas, draft messages, get answers — it's like having a genius on speed dial.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">🔒</div>
+    <h3>Private & Secure</h3>
+    <p>Your data lives in your own isolated workspace. No one else can access your memories or conversations.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">⚡</div>
+    <h3>Instant Setup</h3>
+    <p>Sign up, get a code, text it to Jarvis. You're live in 30 seconds. No app downloads, no passwords.</p>
+  </div>
+</section>
+
+<section class="how">
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <h3>Sign up below</h3>
+        <p>Enter your name, email, and WhatsApp number. Takes 10 seconds.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <h3>Get your activation code</h3>
+        <p>You'll receive a 6-digit code instantly. This is your key to Jarvis.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <h3>Text the code to our WhatsApp</h3>
+        <p>Send the code to our number. Jarvis activates, introduces himself, and you're ready to go.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="signup-section" id="signup">
+  <h2>Get started</h2>
+  <div class="sub">Free to try. No credit card required.</div>
+  <div class="form-box">
+    <div id="formFields">
+      <input id="regName" placeholder="Your name" autocomplete="name">
+      <input id="regEmail" type="email" placeholder="Email address" autocomplete="email">
+      <input id="regPhone" type="tel" placeholder="WhatsApp number (e.g. +1 868 123 4567)" autocomplete="tel">
+      <div class="phone-hint">Include country code. This must be your WhatsApp number.</div>
+      <button id="regBtn" onclick="register()">Get My Activation Code →</button>
+      <div class="error" id="regErr"></div>
+    </div>
+    <div class="success-msg" id="successMsg">
+      <div style="font-size:2rem">🎉</div>
+      <p style="color:#fff;font-size:1.1rem;font-weight:600">You're almost there!</p>
+      <p>Your activation code:</p>
+      <div class="code" id="activationCode"></div>
+      <p>Send this code to our WhatsApp number to activate Jarvis:</p>
+      <a class="wa-btn" id="waLink" href="#" target="_blank">💬 Open WhatsApp & Send Code</a>
+      <p style="margin-top:1rem;font-size:0.8rem;color:#666">Code expires in 24 hours.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p>Jarvis — AI assistant powered by advanced language models. Built with ❤️</p>
+</footer>
+
+<script>
+async function register() {
+  const btn = document.getElementById('regBtn');
+  const err = document.getElementById('regErr');
+  err.textContent = '';
+  
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  
+  if (!name || !email || !phone) {
+    err.textContent = 'All fields are required.';
+    return;
+  }
+  if (!email.includes('@')) {
+    err.textContent = 'Please enter a valid email.';
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Creating your account...';
+  
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      document.getElementById('formFields').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
+      document.getElementById('activationCode').textContent = data.activation_code;
+      
+      // WhatsApp click-to-chat link (update number when you have it)
+      const waNumber = document.body.dataset.waNumber || '';
+      if (waNumber) {
+        document.getElementById('waLink').href = `https://wa.me/${waNumber}?text=${data.activation_code}`;
+      } else {
+        document.getElementById('waLink').style.display = 'none';
+      }
+    } else {
+      err.textContent = data.error || 'Something went wrong.';
+      btn.disabled = false;
+      btn.textContent = 'Get My Activation Code →';
+    }
+  } catch (e) {
+    err.textContent = 'Connection error. Please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Get My Activation Code →';
+  }
+}
+</script>
+</body>
+</html>
