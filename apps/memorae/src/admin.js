@@ -227,6 +227,28 @@ router.get('/analytics', auth, (req, res) => {
   });
 });
 
+// ─── Error Monitoring ────────────────────────────────────────
+const { getRecentErrors, getHourlyCounts } = require('./monitor');
+
+router.get('/errors', auth, (req, res) => {
+  const errors = getRecentErrors(100);
+  const hourlyCounts = getHourlyCounts();
+  res.json({ errors, hourlyCounts });
+});
+
+// ─── Backup Management ──────────────────────────────────────
+const { listBackups, createBackup: runBackup } = require('./backup');
+
+router.get('/backups', auth, (req, res) => {
+  res.json(listBackups());
+});
+
+router.post('/backups/now', auth, (req, res) => {
+  const filename = runBackup();
+  if (filename) res.json({ success: true, filename });
+  else res.status(500).json({ error: 'Backup failed' });
+});
+
 // Change password
 router.put('/password', auth, (req, res) => {
   const { currentPassword, newPassword } = req.body;

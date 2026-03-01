@@ -76,6 +76,8 @@
     <a onclick="nav('config')" id="n-config">🔑 API Keys</a>
     <a onclick="nav('usage')" id="n-usage">📈 Usage</a>
     <a onclick="nav('analytics')" id="n-analytics">📊 Analytics</a>
+    <a onclick="nav('errors')" id="n-errors">🚨 Errors</a>
+    <a onclick="nav('backups')" id="n-backups">💾 Backups</a>
     <a class="logout" onclick="logout()">🚪 Logout</a>
   </div>
   <div class="main">
@@ -143,6 +145,11 @@
             <option value="anthropic_model">Anthropic Model</option>
             <option value="elevenlabs_api_key">ElevenLabs API Key</option>
             <option value="elevenlabs_voice_id">ElevenLabs Voice ID</option>
+            <option value="smtp_host">SMTP Host</option>
+            <option value="smtp_port">SMTP Port</option>
+            <option value="smtp_user">SMTP User</option>
+            <option value="smtp_pass">SMTP Password</option>
+            <option value="smtp_from">SMTP From Address</option>
             <option value="custom">Custom Key...</option>
           </select>
         </div>
@@ -167,6 +174,22 @@
     <div id="p-analytics" class="hidden">
       <h1>📊 Analytics</h1>
       <div id="analyticsContent" style="display:grid;gap:16px"></div>
+    </div>
+
+    <!-- Errors -->
+    <div id="p-errors" class="hidden">
+      <h1>🚨 Error Log</h1>
+      <div id="errorStats" class="grid" style="margin-bottom:1rem"></div>
+      <table><thead><tr><th>Time</th><th>Message</th><th>Context</th></tr></thead>
+      <tbody id="errorsList"></tbody></table>
+    </div>
+
+    <!-- Backups -->
+    <div id="p-backups" class="hidden">
+      <h1>💾 Database Backups</h1>
+      <div style="margin-bottom:1rem"><button class="btn" onclick="triggerBackup()">Create Backup Now</button> <span id="backupMsg" style="color:#00d4aa;font-size:13px;margin-left:10px"></span></div>
+      <table><thead><tr><th>Filename</th><th>Size</th><th>Created</th></tr></thead>
+      <tbody id="backupsList"></tbody></table>
     </div>
   </div>
 </div>
@@ -197,7 +220,7 @@ function logout(){token=null;localStorage.removeItem('jt');location.reload()}
 function showApp(){document.getElementById('loginView').style.display='none';document.getElementById('appView').style.display='block';nav('dash')}
 
 function nav(p){
-  ['dash','tenants','tenant','signups','config','usage','analytics'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
+  ['dash','tenants','tenant','signups','config','usage','analytics','errors','backups'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
   document.getElementById('p-'+p).classList.remove('hidden');
@@ -207,6 +230,8 @@ function nav(p){
   if(p==='config')loadCfg();
   if(p==='usage')loadUsage();
   if(p==='analytics')loadAnalytics();
+  if(p==='errors')loadErrors();
+  if(p==='backups')loadBackups();
 }
 
 async function loadDash(){
@@ -414,6 +439,33 @@ async function loadAnalytics(){
       <table><thead><tr><th>Name</th><th>Phone</th><th>Total Tokens</th><th>Est. Cost</th></tr></thead>
       <tbody>${d.costPerUser.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.phone}</td><td>${u.total_tokens.toLocaleString()}</td><td>$${(u.total_tokens/1000*0.003).toFixed(2)}</td></tr>`).join('')}</tbody></table>
     </div>`;
+}
+
+async function loadErrors(){
+  const d=await api('/errors');if(!d)return;
+  const counts=Object.entries(d.hourlyCounts||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
+  document.getElementById('errorStats').innerHTML=counts.map(([h,c])=>
+    `<div class="card"><div class="label">${h.slice(5)}</div><div class="value" style="color:#ff6b6b">${c}</div></div>`
+  ).join('')||'<div class="card"><div class="label">Errors</div><div class="value" style="color:#00d4aa">0</div><div class="sub">All clear!</div></div>';
+  document.getElementById('errorsList').innerHTML=(d.errors||[]).map(e=>
+    `<tr><td style="white-space:nowrap;font-size:12px">${e.timestamp?new Date(e.timestamp).toLocaleString():'-'}</td>
+    <td style="color:#ff6b6b">${esc(e.message)}</td>
+    <td style="font-size:11px;color:#666">${esc(JSON.stringify(e.context||{}))}</td></tr>`
+  ).join('')||'<tr><td colspan="3" style="text-align:center;color:#666">No errors recorded</td></tr>';
+}
+
+async function loadBackups(){
+  const d=await api('/backups');if(!d)return;
+  document.getElementById('backupsList').innerHTML=d.map(b=>
+    `<tr><td style="font-family:monospace;font-size:12px">${esc(b.filename)}</td><td>${b.sizeHuman}</td><td>${new Date(b.created).toLocaleString()}</td></tr>`
+  ).join('')||'<tr><td colspan="3" style="text-align:center;color:#666">No backups yet</td></tr>';
+}
+
+async function triggerBackup(){
+  document.getElementById('backupMsg').textContent='Creating...';
+  const r=await api('/backups/now',{method:'POST'});
+  if(r&&r.success){document.getElementById('backupMsg').textContent='✅ '+r.filename;loadBackups()}
+  else document.getElementById('backupMsg').textContent='❌ Failed';
 }
 </script>
 </body>

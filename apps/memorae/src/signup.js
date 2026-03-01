@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('./db');
+const { sendActivationCode } = require('./email');
 
 const router = express.Router();
 
@@ -56,6 +57,9 @@ router.post('/register', (req, res) => {
   ).run(name, email, normalizedPhone, code, expiresAt);
 
   console.log(`[SIGNUP] ${name} (${email}) phone:${normalizedPhone} code:${code}`);
+
+  // Send activation code via email (non-blocking, best-effort)
+  sendActivationCode(email, name, code).catch(() => {});
 
   res.json({
     success: true,

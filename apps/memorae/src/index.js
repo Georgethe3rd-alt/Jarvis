@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
@@ -23,6 +24,13 @@ const { router: billingRouter, canSendMessage, incrementMessageCount, getUpgrade
 const { startBriefingChecker } = require('./briefings');
 const dashboardApiRouter = require('./dashboard-api');
 const { updateMemoryFile, updateSoulFile, appendDailyNote } = require('./tenant');
+const { publicLimiter, authLimiter, signupPhoneLimiter } = require('./ratelimit');
+const { logError, installGlobalHandlers } = require('./monitor');
+const { startBackupScheduler } = require('./backup');
+const { sendWelcomeEmail } = require('./email');
+
+// ─── Global Error Handlers ──────────────────────────────────
+installGlobalHandlers();
 
 // ─── Onboarding Migration ───────────────────────────────────
 const tenantCols = db.prepare("PRAGMA table_info(tenants)").all().map(c => c.name);
@@ -32,6 +40,19 @@ const app = express();
 const PORT = process.env.PORT || 3003;
 
 app.use(cors());
+
+// ─── Raw body capture for webhook signature verification ────
+app.use('/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  // Store raw body for HMAC verification, then parse JSON
+  req.rawBody = req.body;
+  try {
+    req.body = JSON.parse(req.rawBody);
+  } catch {
+    req.body = {};
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -39,12 +60,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ─── Sign-up API ────────────────────────────────────────────
+app.use('/api/register', signupPhoneLimiter, publicLimiter);
 app.use('/api', signupRouter);
 
 // ─── Billing ────────────────────────────────────────────────
 app.use('/billing', billingRouter);
 
 // ─── User Dashboard ─────────────────────────────────────────
+app.use('/dashboard/api/login', authLimiter);
 app.use('/dashboard/api', dashboardApiRouter);
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html')));
 app.get('/dashboard/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html')));
@@ -52,9 +75,38 @@ app.get('/dashboard/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'p
 // ─── WhatsApp Webhook ───────────────────────────────────────
 app.get('/webhook', verifyWebhook);
 
+// Webhook signature verification + rate limiting
+let _appSecretWarned = false;
+app.post('/webhook', publicLimiter, (req, res, next) => {
+  // Verify Meta webhook signature if app_secret is configured
+  try {
+    const secretRow = db.prepare('SELECT value FROM config WHERE key = ?').get('whatsapp_app_secret');
+    const appSecret = secretRow ? secretRow.value : null;
+    if (appSecret && req.rawBody) {
+      const sig = req.headers['x-hub-signature-256'];
+      if (!sig) {
+        console.warn('[WEBHOOK] Missing X-Hub-Signature-256 header');
+        return res.status(403).json({ error: 'Missing signature' });
+      }
+      const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+        console.warn('[WEBHOOK] Invalid signature');
+        return res.status(403).json({ error: 'Invalid signature' });
+      }
+    } else if (!appSecret && !_appSecretWarned) {
+      console.warn('[WEBHOOK] No whatsapp_app_secret configured — signature verification disabled');
+      _appSecretWarned = true;
+    }
+  } catch (err) {
+    logError(err.message, err.stack, { handler: 'webhook-signature' });
+  }
+  next();
+});
+
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 
+  try {
   const msg = parseWebhook(req.body);
   if (!msg || !msg.text) return;
 
@@ -215,6 +267,7 @@ app.post('/webhook', async (req, res) => {
       db.prepare("UPDATE tenants SET onboarding_step = 'name' WHERE id = ?").run(newTenant.id);
 
       console.log(`[ACTIVATE] ${signup.name} (${phone}) → Tenant #${newTenant.id}`);
+      sendWelcomeEmail(signup.email, signup.name).catch(() => {});
 
       await sendMessage(phone,
         `✅ *Jarvis online.* Welcome, ${signup.name}.\n\n` +
@@ -241,12 +294,17 @@ app.post('/webhook', async (req, res) => {
     "3️⃣ Send that code here to activate\n\n" +
     "Already have a code? Just send it now!"
   );
+
+  } catch (err) {
+    logError(err.message, err.stack, { handler: 'webhook-post' });
+  }
 });
 
 // ─── Voice Calls (Twilio) ───────────────────────────────────
 app.use('/voice', callRouter);
 
 // ─── Admin Console ──────────────────────────────────────────
+app.use('/admin/api/login', authLimiter);
 app.use('/admin/api', adminRouter);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
 app.get('/admin/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
@@ -312,4 +370,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   startReminderChecker();
   startBriefingChecker();
+  startBackupScheduler();
 });
