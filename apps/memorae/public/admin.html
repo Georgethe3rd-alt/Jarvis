@@ -75,6 +75,7 @@
     <a onclick="nav('signups')" id="n-signups">📝 Signups</a>
     <a onclick="nav('config')" id="n-config">🔑 API Keys</a>
     <a onclick="nav('usage')" id="n-usage">📈 Usage</a>
+    <a onclick="nav('analytics')" id="n-analytics">📊 Analytics</a>
     <a class="logout" onclick="logout()">🚪 Logout</a>
   </div>
   <div class="main">
@@ -161,6 +162,12 @@
       <table><thead><tr><th>Date</th><th>Requests</th><th>Input Tokens</th><th>Output Tokens</th><th>Total</th></tr></thead>
       <tbody id="usageList"></tbody></table>
     </div>
+
+    <!-- Analytics -->
+    <div id="p-analytics" class="hidden">
+      <h1>📊 Analytics</h1>
+      <div id="analyticsContent" style="display:grid;gap:16px"></div>
+    </div>
   </div>
 </div>
 
@@ -190,7 +197,7 @@ function logout(){token=null;localStorage.removeItem('jt');location.reload()}
 function showApp(){document.getElementById('loginView').style.display='none';document.getElementById('appView').style.display='block';nav('dash')}
 
 function nav(p){
-  ['dash','tenants','tenant','signups','config','usage'].forEach(x=>document.getElementById('p-'+x).classList.add('hidden'));
+  ['dash','tenants','tenant','signups','config','usage','analytics'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
   document.getElementById('p-'+p).classList.remove('hidden');
@@ -199,6 +206,7 @@ function nav(p){
   if(p==='signups')loadSignups();
   if(p==='config')loadCfg();
   if(p==='usage')loadUsage();
+  if(p==='analytics')loadAnalytics();
 }
 
 async function loadDash(){
@@ -358,6 +366,55 @@ async function genCode(){
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+
+async function loadAnalytics(){
+  const d=await api('/analytics');if(!d)return;
+  const el=document.getElementById('analyticsContent');
+  
+  // SVG bar chart helper
+  function barChart(data, width=600, height=200){
+    if(!data.length)return '<p style="color:#666">No data</p>';
+    const max=Math.max(...data.map(d=>d.count),1);
+    const bw=Math.max(4,Math.min(20,(width-40)/data.length-2));
+    const bars=data.map((d,i)=>{
+      const h=(d.count/max)*(height-40);
+      const x=30+i*(bw+2);
+      return `<rect x="${x}" y="${height-20-h}" width="${bw}" height="${h}" fill="#00d4aa" rx="2"><title>${d.day}: ${d.count}</title></rect>`;
+    }).join('');
+    return `<svg width="${width}" height="${height}" style="background:#1a1a2e;border-radius:8px;padding:4px">
+      <text x="4" y="14" fill="#666" font-size="10">${max}</text>
+      <line x1="28" y1="0" x2="28" y2="${height-20}" stroke="#333"/>
+      <line x1="28" y1="${height-20}" x2="${width}" y2="${height-20}" stroke="#333"/>
+      ${bars}
+    </svg>`;
+  }
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+      <div class="card"><div class="label">Total Users</div><div class="value">${d.totalUsers}</div></div>
+      <div class="card"><div class="label">7d Retention</div><div class="value">${d.retention7d}%</div></div>
+      <div class="card"><div class="label">30d Retention</div><div class="value">${d.retention30d}%</div></div>
+      <div class="card"><div class="label">MRR</div><div class="value">$${d.revenue}</div></div>
+    </div>
+    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
+      <h3 style="color:#00d4aa;margin-bottom:8px">Message Volume (30 days)</h3>
+      ${barChart(d.messageVolume)}
+    </div>
+    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
+      <h3 style="color:#00d4aa;margin-bottom:8px">Plan Distribution</h3>
+      ${d.planCounts.map(p=>`<span style="display:inline-block;margin:4px 8px;padding:4px 12px;background:#0a0a0a;border-radius:6px">${p.plan||'free'}: <b>${p.count}</b></span>`).join('')}
+    </div>
+    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
+      <h3 style="color:#00d4aa;margin-bottom:8px">Top Users</h3>
+      <table><thead><tr><th>Name</th><th>Phone</th><th>Messages</th><th>Plan</th><th>Last Active</th></tr></thead>
+      <tbody>${d.topUsers.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.phone}</td><td>${u.message_count}</td><td>${u.plan||'free'}</td><td>${u.last_active?new Date(u.last_active).toLocaleDateString():'-'}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div style="background:#1a1a2e;padding:16px;border-radius:10px">
+      <h3 style="color:#00d4aa;margin-bottom:8px">Token Cost per User (Top 20)</h3>
+      <table><thead><tr><th>Name</th><th>Phone</th><th>Total Tokens</th><th>Est. Cost</th></tr></thead>
+      <tbody>${d.costPerUser.map(u=>`<tr><td>${esc(u.name)}</td><td>${u.phone}</td><td>${u.total_tokens.toLocaleString()}</td><td>$${(u.total_tokens/1000*0.003).toFixed(2)}</td></tr>`).join('')}</tbody></table>
+    </div>`;
+}
 </script>
 </body>
 </html>

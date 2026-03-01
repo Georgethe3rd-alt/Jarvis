@@ -173,6 +173,60 @@ router.get('/usage', auth, (req, res) => {
   res.json(daily);
 });
 
+// Analytics
+router.get('/analytics', auth, (req, res) => {
+  // Message volume (last 30 days)
+  const messageVolume = db.prepare(`
+    SELECT date(created_at) as day, COUNT(*) as count
+    FROM conversations WHERE created_at > datetime('now', '-30 days')
+    GROUP BY date(created_at) ORDER BY day
+  `).all();
+
+  // Retention: users active in last 7 days vs total
+  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM tenants').get().c;
+  const active7d = db.prepare("SELECT COUNT(*) as c FROM tenants WHERE last_active > datetime('now', '-7 days')").get().c;
+  const active30d = db.prepare("SELECT COUNT(*) as c FROM tenants WHERE last_active > datetime('now', '-30 days')").get().c;
+
+  // Cost per user (tokens)
+  const costPerUser = db.prepare(`
+    SELECT t.id, t.name, t.phone, COALESCE(SUM(u.input_tokens + u.output_tokens), 0) as total_tokens
+    FROM tenants t LEFT JOIN usage_log u ON t.id = u.tenant_id
+    GROUP BY t.id ORDER BY total_tokens DESC LIMIT 20
+  `).all();
+
+  // Top users by messages
+  const topUsers = db.prepare(`
+    SELECT t.id, t.name, t.phone, t.message_count, t.plan, t.last_active
+    FROM tenants t ORDER BY t.message_count DESC LIMIT 20
+  `).all();
+
+  // Revenue
+  const planCounts = db.prepare(`
+    SELECT plan, COUNT(*) as count FROM tenants GROUP BY plan
+  `).all();
+
+  const revenue = planCounts.reduce((sum, p) => {
+    if (p.plan === 'pro') return sum + p.count * 9.99;
+    if (p.plan === 'unlimited') return sum + p.count * 24.99;
+    return sum;
+  }, 0);
+
+  // New signups per day
+  const signupVolume = db.prepare(`
+    SELECT date(created_at) as day, COUNT(*) as count
+    FROM signups WHERE created_at > datetime('now', '-30 days')
+    GROUP BY date(created_at) ORDER BY day
+  `).all();
+
+  res.json({
+    messageVolume, totalUsers, active7d, active30d,
+    retention7d: totalUsers ? (active7d / totalUsers * 100).toFixed(1) : 0,
+    retention30d: totalUsers ? (active30d / totalUsers * 100).toFixed(1) : 0,
+    costPerUser, topUsers, planCounts, revenue: revenue.toFixed(2),
+    signupVolume
+  });
+});
+
 // Change password
 router.put('/password', auth, (req, res) => {
   const { currentPassword, newPassword } = req.body;

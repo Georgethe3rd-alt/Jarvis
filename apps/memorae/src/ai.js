@@ -1,7 +1,8 @@
 const Anthropic = require('@anthropic-ai/sdk').default;
 const db = require('./db');
-const { getConfig } = require('./whatsapp');
+const { getConfig, sendMessage: sendWhatsApp } = require('./whatsapp');
 const { provisionTenant, getTenantMemoryContext, appendDailyNote, updateMemoryFile, updateSoulFile } = require('./tenant');
+const { setBriefingTime } = require('./briefings');
 
 function getClient() {
   const apiKey = getConfig('anthropic_api_key') || process.env.ANTHROPIC_API_KEY;
@@ -100,6 +101,17 @@ To perform actions, include JSON blocks at the END of your reply (they will be s
 {"type": "update_soul", "content": "new personality instruction or preference to add to SOUL.md"}
 \`\`\`
 
+\`\`\`action
+{"type": "send_to_contact", "phone": "+1868XXXXXXX", "message": "text to send"}
+\`\`\`
+
+\`\`\`action
+{"type": "set_briefing_time", "time": "8am"}
+\`\`\`
+
+When the user asks to send something to another phone number (like "send my grocery list to +1868..."), use send_to_contact.
+When the user asks to remind someone else at another phone number, use send_to_contact with an appropriate message.
+When the user asks to set a daily briefing time, use set_briefing_time.
 When the user asks you to change your personality, tone, language, or name — use update_soul to persist that change.
 
 You can include multiple action blocks. Keep your spoken reply natural and concise.`;
@@ -158,6 +170,19 @@ You can include multiple action blocks. Keep your spoken reply natural and conci
           case 'update_soul':
             updateSoulFile(tenant, action.content);
             appendDailyNote(tenant, `Personality updated: ${action.content}`);
+            break;
+          case 'send_to_contact':
+            if (action.phone && action.message) {
+              const contactPhone = action.phone.replace(/[^\d]/g, '');
+              await sendWhatsApp(contactPhone, `📨 Message from ${name || phone}:\n\n${action.message}`);
+              appendDailyNote(tenant, `Sent message to ${action.phone}: ${action.message.substring(0, 80)}`);
+            }
+            break;
+          case 'set_briefing_time':
+            if (action.time) {
+              const formatted = setBriefingTime(tenant.id, action.time);
+              if (formatted) appendDailyNote(tenant, `Daily briefing set for ${formatted}`);
+            }
             break;
         }
       } catch (e) {

@@ -19,6 +19,14 @@ const { startReminderChecker } = require('./reminders');
 const { transcribe, textToSpeech } = require('./voice');
 const callRouter = require('./calls');
 const { processAttachment } = require('./documents');
+const { router: billingRouter, canSendMessage, incrementMessageCount, getUpgradeMessage } = require('./billing');
+const { startBriefingChecker } = require('./briefings');
+const dashboardApiRouter = require('./dashboard-api');
+const { updateMemoryFile, updateSoulFile, appendDailyNote } = require('./tenant');
+
+// ─── Onboarding Migration ───────────────────────────────────
+const tenantCols = db.prepare("PRAGMA table_info(tenants)").all().map(c => c.name);
+if (!tenantCols.includes('onboarding_step')) db.exec("ALTER TABLE tenants ADD COLUMN onboarding_step TEXT");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -32,6 +40,14 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ─── Sign-up API ────────────────────────────────────────────
 app.use('/api', signupRouter);
+
+// ─── Billing ────────────────────────────────────────────────
+app.use('/billing', billingRouter);
+
+// ─── User Dashboard ─────────────────────────────────────────
+app.use('/dashboard/api', dashboardApiRouter);
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html')));
+app.get('/dashboard/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html')));
 
 // ─── WhatsApp Webhook ───────────────────────────────────────
 app.get('/webhook', verifyWebhook);
@@ -149,6 +165,24 @@ app.post('/webhook', async (req, res) => {
   const tenant = db.prepare('SELECT * FROM tenants WHERE phone = ? AND status = ?').get(phone, 'active');
 
   if (tenant) {
+    // ─── Onboarding Flow ──────────────────────────────────
+    if (tenant.onboarding_step && tenant.onboarding_step !== 'complete') {
+      try {
+        await handleOnboarding(tenant, phone, msg.name, text);
+      } catch (err) {
+        console.error('[ONBOARDING ERROR]', err);
+        await sendMessage(phone, "Something went wrong. Let's try that again — just re-type your answer.");
+      }
+      return;
+    }
+
+    // ─── Billing Check ───────────────────────────────────
+    if (!canSendMessage(tenant)) {
+      await sendMessage(phone, getUpgradeMessage(tenant));
+      return;
+    }
+    incrementMessageCount(tenant.id);
+
     // Active tenant — process normally
     try {
       const reply = await processMessage(phone, msg.name, text);
@@ -177,24 +211,15 @@ app.post('/webhook', async (req, res) => {
       const newTenant = provisionTenant(phone, signup.name);
       db.prepare('UPDATE tenants SET email = ? WHERE id = ?').run(signup.email, newTenant.id);
 
+      // Start onboarding
+      db.prepare("UPDATE tenants SET onboarding_step = 'name' WHERE id = ?").run(newTenant.id);
+
       console.log(`[ACTIVATE] ${signup.name} (${phone}) → Tenant #${newTenant.id}`);
 
       await sendMessage(phone,
         `✅ *Jarvis online.* Welcome, ${signup.name}.\n\n` +
-        `Your personal AI workspace has been provisioned. Here's what I can do:\n\n` +
-        `🧠 *Total Recall* — Tell me anything. I never forget.\n` +
-        `⏰ *Reminders* — "Remind me to call Mom at 5pm"\n` +
-        `📋 *Lists & Organization* — Shopping, tasks, ideas — all sorted.\n` +
-        `💬 *Draft & Think* — Brainstorm, write emails, plan projects.\n` +
-        `📊 *Daily Briefing* — Ask me "What's on my plate today?"\n\n` +
-        `Everything is private — your own isolated workspace that no one else can access.\n\n` +
-        `One more thing: I come with a default personality (think Jarvis from Iron Man — dry wit, proactive, gets things done). But I'm *yours* to customize.\n\n` +
-        `Want to change how I talk? Just tell me:\n` +
-        `• "Be more casual" or "Be more formal"\n` +
-        `• "Speak to me in French"\n` +
-        `• "Be more like a coach"\n` +
-        `• "Call me [nickname]"\n\n` +
-        `Or just start using me as-is. What can I help you with?`
+        `Your personal AI workspace has been provisioned. Let me get to know you — just 3 quick questions.\n\n` +
+        `First: *What should I call you?* (A name, nickname, whatever you prefer)`
       );
       return;
     }
@@ -233,6 +258,47 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), tenants, pendingSignups, timestamp: new Date().toISOString() });
 });
 
+// ─── Onboarding Handler ─────────────────────────────────────
+async function handleOnboarding(tenant, phone, name, text) {
+  const step = tenant.onboarding_step;
+
+  if (step === 'name') {
+    const displayName = text.trim();
+    db.prepare("UPDATE tenants SET display_name = ?, onboarding_step = 'work' WHERE id = ?")
+      .run(displayName, tenant.id);
+    updateMemoryFile(tenant, 'About My Human', `Preferred name: ${displayName}`);
+    await sendMessage(phone, `Nice to meet you, ${displayName}. 🤝\n\nNext: *What do you do for work?* (Or just say "skip" if you'd rather not say)`);
+  } else if (step === 'work') {
+    const work = text.trim().toLowerCase() === 'skip' ? null : text.trim();
+    db.prepare("UPDATE tenants SET onboarding_step = 'goals' WHERE id = ?").run(tenant.id);
+    if (work) {
+      updateMemoryFile(tenant, 'About My Human', `Work: ${work}`);
+    }
+    await sendMessage(phone, `${work ? 'Got it.' : 'No problem.'}\n\nLast one: *What's the main thing you want me to help with?*\n\n(Productivity, reminders, brainstorming, daily planning — anything goes)`);
+  } else if (step === 'goals') {
+    const goal = text.trim();
+    db.prepare("UPDATE tenants SET onboarding_step = 'complete' WHERE id = ?").run(tenant.id);
+    updateMemoryFile(tenant, 'About My Human', `Primary goal: ${goal}`);
+    updateSoulFile(tenant, `User's primary use case: ${goal}. Prioritize this in suggestions and proactive help.`);
+    appendDailyNote(tenant, `Onboarding complete. Goal: ${goal}`);
+
+    const displayName = tenant.display_name || name || 'boss';
+    await sendMessage(phone,
+      `Perfect. Onboarding complete. ✅\n\n` +
+      `Here's what I can do, ${displayName}:\n\n` +
+      `🧠 *Total Recall* — Tell me anything. I never forget.\n` +
+      `⏰ *Reminders* — "Remind me to call Mom at 5pm"\n` +
+      `📋 *Lists & Organization* — Shopping, tasks, ideas — all sorted.\n` +
+      `💬 *Draft & Think* — Brainstorm, write emails, plan projects.\n` +
+      `📊 *Daily Briefing* — "Set my daily briefing for 8am"\n` +
+      `📨 *Sharing* — "Send my grocery list to +1868..."\n\n` +
+      `Everything is private — your own isolated workspace.\n\n` +
+      `I'm yours to customize. Just say "be more casual", "speak French", or whatever suits you.\n\n` +
+      `What can I help you with first?`
+    );
+  }
+}
+
 // ─── Start ──────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
   console.log('');
@@ -245,4 +311,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  💚 Health Check     : http://0.0.0.0:${PORT}/health`);
   console.log('');
   startReminderChecker();
+  startBriefingChecker();
 });
