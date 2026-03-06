@@ -309,6 +309,37 @@ router.put('/password', auth, (req, res) => {
   res.json({ success: true });
 });
 
+// ─── Social Media Posts ─────────────────────────────────────
+router.post('/posts/manual-upload', auth, (req, res) => {
+  const { platform, caption, mediaUrl, mediaType } = req.body;
+  
+  if (!platform || !caption) {
+    return res.status(400).json({ error: 'Platform and caption required' });
+  }
+
+  // Log the post attempt
+  console.log(`📱 Manual post to ${platform}:`, { caption, mediaUrl, mediaType });
+
+  // TODO: Implement actual posting logic based on platform
+  // For now, just log and return success
+  const postId = Date.now().toString();
+  
+  res.json({ 
+    success: true, 
+    postId,
+    platform,
+    message: 'Post queued for publishing',
+    // TODO: Add actual posting status once implemented
+    status: 'pending'
+  });
+});
+
+router.get('/posts', auth, (req, res) => {
+  // TODO: Return scheduled/posted items from database
+  // For now, return empty array
+  res.json([]);
+});
+
 // Serve admin UI
 router.use('/', express.static(path.join(__dirname, '..', 'public')));
 
