@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  
   <title>J.A.R.V.I.S. — Your Personal AI Assistant</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
@@ -155,6 +155,7 @@
       .form-box::before{font-size:0.5rem;letter-spacing:2px}
     }
   </style>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/favicon-192.png">
 </head>
 <body>
 
@@ -207,7 +208,14 @@
     </div>
     <div class="feat">
       <div class="icon">◆</div>
-      <h3>Draft & Execute</h3>
+      <h3>Voice Calls</h3>
+        <p>Call Jarvis directly at <span style="color:#0af">+1 (218) 419-5528</span> or tell him "call me" and he'll ring you. Real voice conversations powered by AI.</p>
+      </div>
+    </div>
+    <div class="cap-card">
+      <div class="cap-icon">◈</div>
+      <div>
+        <h3>Draft & Execute</h3>
       <p>Draft emails, write messages, brainstorm ideas, plan projects. Jarvis doesn't just remember — it thinks, writes, and creates alongside you.</p>
     </div>
     <div class="feat">
@@ -262,7 +270,7 @@
       <div class="step-num">03</div>
       <div class="step-text">
         <h3>Transmit Code via WhatsApp</h3>
-        <p>Send the code to our WhatsApp number. Your personal workspace is provisioned and Jarvis comes online.</p>
+        <p>Send the code to Jarvis on WhatsApp at <span style="color:#0af;font-family:Orbitron,monospace">+1 (754) 213-8757</span>. Your personal workspace is provisioned and Jarvis comes online.</p>
       </div>
     </div>
   </div>
@@ -313,6 +321,59 @@
   <p style="margin-bottom:0.5rem"><a href="/terms.html" style="color:var(--text-dim);text-decoration:none;margin:0 1rem">Terms of Service</a> <a href="/privacy.html" style="color:var(--text-dim);text-decoration:none;margin:0 1rem">Privacy Policy</a></p>
   <p>J.A.R.V.I.S. // Just A Rather Very Intelligent System</p>
 </footer>
+    <!-- Pricing Section -->
+    <section id="pricing" style="padding:80px 20px;max-width:1000px;margin:0 auto;">
+      <h2 style="text-align:center;font-family:'Orbitron',monospace;font-size:2rem;color:#00d4ff;margin-bottom:10px;">Choose Your Plan</h2>
+      <p style="text-align:center;color:#8899aa;margin-bottom:50px;font-size:1.1rem;">Upgrade anytime from WhatsApp — just type <strong style="color:#00d4ff">upgrade</strong></p>
+      
+      <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;">
+        <!-- Free -->
+        <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:16px;padding:36px 28px;width:280px;text-align:center;">
+          <div style="font-size:1.4rem;font-family:'Orbitron',monospace;color:#8899aa;margin-bottom:8px;">Free</div>
+          <div style="font-size:2.8rem;font-weight:bold;color:#fff;margin-bottom:4px;">$0</div>
+          <div style="color:#667788;margin-bottom:24px;font-size:0.9rem;">forever</div>
+          <ul style="list-style:none;padding:0;text-align:left;color:#aabbcc;line-height:2.2;font-size:0.95rem;">
+            <li>✓ 100 messages/month</li>
+            <li>✓ Text conversations</li>
+            <li>✓ Voice note transcription</li>
+            <li>✓ Basic memory</li>
+          </ul>
+          <div style="margin-top:24px;padding:12px;border-radius:8px;background:rgba(0,212,255,0.1);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.85rem;">CURRENT PLAN</div>
+        </div>
+
+        <!-- Pro -->
+        <div style="background:rgba(0,212,255,0.08);border:2px solid rgba(0,212,255,0.4);border-radius:16px;padding:36px 28px;width:280px;text-align:center;position:relative;transform:scale(1.05);">
+          <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#00d4ff;color:#0a0e1a;padding:4px 16px;border-radius:20px;font-size:0.75rem;font-family:'Orbitron',monospace;font-weight:bold;">POPULAR</div>
+          <div style="font-size:1.4rem;font-family:'Orbitron',monospace;color:#00d4ff;margin-bottom:8px;">Pro</div>
+          <div style="font-size:2.8rem;font-weight:bold;color:#fff;margin-bottom:4px;">$9<span style="font-size:1.4rem;">.99</span></div>
+          <div style="color:#667788;margin-bottom:24px;font-size:0.9rem;">/month</div>
+          <ul style="list-style:none;padding:0;text-align:left;color:#aabbcc;line-height:2.2;font-size:0.95rem;">
+            <li>⚡ 500 messages/month</li>
+            <li>⚡ Priority responses</li>
+            <li>⚡ Full memory & reminders</li>
+            <li>⚡ Document analysis</li>
+            <li>⚡ Voice note replies</li>
+          </ul>
+          <a href="#" onclick="event.preventDefault();var p=prompt('Enter your WhatsApp number (e.g. 18687864917):');if(p)window.location='/billing/checkout/pro?phone='+p.replace(/[^0-9]/g,'')" style="display:block;margin-top:24px;padding:14px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#0088cc);color:#fff;text-decoration:none;font-family:'Orbitron',monospace;font-size:0.85rem;font-weight:bold;transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 20px rgba(0,212,255,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">UPGRADE TO PRO</a>
+        </div>
+
+        <!-- Unlimited -->
+        <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:16px;padding:36px 28px;width:280px;text-align:center;">
+          <div style="font-size:1.4rem;font-family:'Orbitron',monospace;color:#ffaa00;margin-bottom:8px;">Unlimited</div>
+          <div style="font-size:2.8rem;font-weight:bold;color:#fff;margin-bottom:4px;">$24<span style="font-size:1.4rem;">.99</span></div>
+          <div style="color:#667788;margin-bottom:24px;font-size:0.9rem;">/month</div>
+          <ul style="list-style:none;padding:0;text-align:left;color:#aabbcc;line-height:2.2;font-size:0.95rem;">
+            <li>🚀 Unlimited messages</li>
+            <li>🚀 Everything in Pro</li>
+            <li>🚀 Daily briefings</li>
+            <li>🚀 Priority support</li>
+            <li>🚀 Early access to features</li>
+          </ul>
+          <a href="#" onclick="event.preventDefault();var p=prompt('Enter your WhatsApp number (e.g. 18687864917):');if(p)window.location='/billing/checkout/unlimited?phone='+p.replace(/[^0-9]/g,'')" style="display:block;margin-top:24px;padding:14px;border-radius:8px;background:rgba(255,170,0,0.15);border:1px solid rgba(255,170,0,0.4);color:#ffaa00;text-decoration:none;font-family:'Orbitron',monospace;font-size:0.85rem;font-weight:bold;transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 20px rgba(255,170,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''">GO UNLIMITED</a>
+        </div>
+      </div>
+    </section>
+
 
 </div>
 

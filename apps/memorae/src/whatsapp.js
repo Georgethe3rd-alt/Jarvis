@@ -147,9 +147,9 @@ async function sendAudioMessage(to, audioBuffer) {
     // Upload media first
     const FormData = require('form-data');
     const form = new FormData();
-    form.append('file', audioBuffer, { filename: 'response.ogg', contentType: 'audio/ogg' });
+    form.append('file', audioBuffer, { filename: 'response.mp3', contentType: 'audio/mpeg' });
     form.append('messaging_product', 'whatsapp');
-    form.append('type', 'audio/ogg');
+    form.append('type', 'audio/mpeg');
 
     const uploadRes = await axios.post(`${GRAPH_API}/${phoneId}/media`, form, {
       headers: { Authorization: `Bearer ${token}`, ...form.getHeaders() }
@@ -172,4 +172,53 @@ async function sendAudioMessage(to, audioBuffer) {
   }
 }
 
-module.exports = { sendMessage, sendAudioMessage, markAsRead, verifyWebhook, parseWebhook, downloadMedia, getConfig };
+async function sendImageMessage(to, imageUrl, caption) {
+  const token = getConfig("whatsapp_token") || process.env.WHATSAPP_TOKEN;
+  const phoneId = getConfig("whatsapp_phone_number_id") || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) { console.error("[WA] Not configured"); return null; }
+  try {
+    const res = await axios.post(`${GRAPH_API}/${phoneId}/messages`, {
+      messaging_product: "whatsapp",
+      to: to.replace(/[^\d]/g, ""),
+      type: "image",
+      image: { link: imageUrl, caption: caption || "" }
+    }, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+    console.log(`[WA] Image sent to ${to}`);
+    return res.data;
+  } catch (err) {
+    console.error("[WA] Image send error:", err.response?.data || err.message);
+    return null;
+  }
+}
+
+
+async function sendTypingIndicator(to) {
+  const token = getConfig('whatsapp_token') || process.env.WHATSAPP_TOKEN;
+  const phoneId = getConfig('whatsapp_phone_number_id') || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) return;
+  try {
+    await axios.post(`${GRAPH_API}/${phoneId}/messages`, {
+      messaging_product: 'whatsapp',
+      to: to.replace(/[^\d]/g, ''),
+      type: 'reaction',
+      status: 'typing'
+    }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+  } catch (e) {}
+}
+
+
+async function reactToMessage(to, messageId, emoji) {
+  const token = getConfig('whatsapp_token') || process.env.WHATSAPP_TOKEN;
+  const phoneId = getConfig('whatsapp_phone_number_id') || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId || !messageId) return;
+  try {
+    await axios.post(`${GRAPH_API}/${phoneId}/messages`, {
+      messaging_product: 'whatsapp',
+      to: to.replace(/[^\d]/g, ''),
+      type: 'reaction',
+      reaction: { message_id: messageId, emoji: emoji || '' }
+    }, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (e) {}
+}
+
+module.exports = { reactToMessage, sendTypingIndicator, sendMessage, sendImageMessage, sendAudioMessage, markAsRead, verifyWebhook, parseWebhook, downloadMedia, getConfig };

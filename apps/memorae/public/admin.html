@@ -99,12 +99,18 @@
     <a onclick="nav('errors')" id="n-errors">🚨 Errors</a>
     <a onclick="nav('backups')" id="n-backups">💾 Backups</a>
     <a onclick="nav('security')" id="n-security">🔐 Security</a>
+    <a onclick="nav('docs')" id="n-docs">📚 Documentation</a>
     <a class="logout" onclick="logout()">🚪 Logout</a>
   </div>
   <div class="main">
     <!-- Dashboard -->
     <div id="p-dash">
       <h1>Dashboard</h1>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:rgba(0,20,40,0.6);border-radius:10px;border:1px solid rgba(0,170,255,0.12)">
+        <span style="font-size:13px;color:#aaa">Service Status:</span>
+        <button id="serviceToggle" onclick="toggleService()" style="padding:6px 20px;border-radius:6px;border:1px solid rgba(0,170,255,0.3);font-family:inherit;font-size:13px;cursor:pointer;font-weight:bold;transition:all 0.3s">Loading...</button>
+        <span id="serviceLabel" style="font-size:11px;color:#666"></span>
+      </div>
       <div class="grid" id="statsGrid"></div>
     </div>
 
@@ -230,6 +236,20 @@
       </div>
     </div>
 
+    <!-- Documentation -->
+    <div id="p-docs" class="hidden">
+      <h1>📚 Documentation</h1>
+      <div class="tabs">
+        <div class="tab active" onclick="docsTab('user',this)">👤 User Guide</div>
+        <div class="tab" onclick="docsTab('technical',this)">🔧 Technical</div>
+        <div class="tab" onclick="docsTab('developer',this)">💻 Developer</div>
+      </div>
+      <div id="d-user" style="padding:16px;background:rgba(0,20,40,0.6);border-radius:10px;line-height:1.8;font-size:13px;color:#ccc"></div>
+      <div id="d-technical" class="hidden" style="padding:16px;background:rgba(0,20,40,0.6);border-radius:10px;line-height:1.8;font-size:13px;color:#ccc"></div>
+      <div id="d-developer" class="hidden" style="padding:16px;background:rgba(0,20,40,0.6);border-radius:10px;line-height:1.8;font-size:13px;color:#ccc"></div>
+    </div>
+
+
     <!-- Backups -->
     <div id="p-backups" class="hidden">
       <h1>💾 Database Backups</h1>
@@ -270,9 +290,10 @@ function toggleSidebar(){
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebarOverlay').classList.toggle('open');
 }
-function nav(p){
+function nav(p) {
+  if(p==='docs') loadDocs(); if(p==='dash') loadServiceStatus();
   if(window.innerWidth<=768)toggleSidebar();
-  ['dash','tenants','tenant','signups','config','usage','analytics','errors','backups','security'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
+  ['dash','tenants','tenant','signups','config','usage','analytics','errors','backups','security','docs'].forEach(x=>{const e=document.getElementById('p-'+x);if(e)e.classList.add('hidden')});
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   const n=document.getElementById('n-'+p);if(n)n.classList.add('active');
   document.getElementById('p-'+p).classList.remove('hidden');
@@ -562,6 +583,75 @@ async function changePass(){
   document.getElementById('passMsg').textContent=r&&r.success?'✅ Password updated':'❌ '+(r?.error||'Failed');
   if(r&&r.success){document.getElementById('curPass').value='';document.getElementById('newPass').value='';}
 }
+
+
+function docsTab(tab, el) {
+  ['user','technical','developer'].forEach(function(t) { document.getElementById('d-'+t).classList.add('hidden'); });
+  document.getElementById('d-'+tab).classList.remove('hidden');
+  el.parentElement.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+}
+
+function loadDocs() {
+  var h = function(t) { return t
+    .replace(/^### (.+)$/gm, '<h3 style="color:#0af;margin:16px 0 8px">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="color:#0af;margin:20px 0 10px;border-bottom:1px solid rgba(0,170,255,0.2);padding-bottom:6px">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="color:#0af;margin:20px 0 12px">$1</h1>')
+    .replace(/\n/g, '<br>');
+  };
+  document.getElementById('d-user').innerHTML = h(DOCS.user);
+  document.getElementById('d-technical').innerHTML = h(DOCS.technical);
+  document.getElementById('d-developer').innerHTML = h(DOCS.developer);
+}
+
+var DOCS = {};
+DOCS.user = "# Jarvis User Guide\n\n## Getting Started\n\n### Sign Up\n1. Visit jarvisproject.ai\n2. Enter your name, email, and WhatsApp number\n3. Receive an activation code via WhatsApp\n4. Send the code to Jarvis to activate\n\n### First Conversation\nOnce activated, just message Jarvis on WhatsApp. He responds naturally and remembers everything.\n\n## Features\n\n### Chat\nTalk to Jarvis like a friend. He remembers your conversations and learns your preferences.\n\n### Web Search\nAsk Jarvis to search anything. Example: \"Search for flights to Jamaica\"\n\n### URL Analysis\nSend any link - articles, Instagram, TikTok, YouTube - Jarvis reads and summarizes it.\n\n### Image Understanding\nSend a photo and ask about it. Jarvis can read text in images, describe scenes, and more.\n\n### Image Generation\nExample: \"Generate an image of a Caribbean sunset\"\n\n### Voice Notes\nSend voice notes - Jarvis transcribes and responds. He can reply with voice too.\n\n### Phone Calls\nSay \"call me\" and Jarvis will call your number. Or \"call +1234567890\".\n\n### Reminders\nExamples:\n- \"Remind me to take medicine at 8am\"\n- \"Remind me every Monday to submit report\"\n- \"Remind me in the morning\" (defaults to 7:00 AM)\n\n### Contacts\n- \"Save John: +18681234567\"\n- \"Call John\"\n- \"List my contacts\"\n\n### File Workspace\n- \"Save this as notes.txt\"\n- \"Read notes.txt\"\n- \"List my files\"\n\n### Memory\nJarvis remembers what you tell him - preferences, habits, important info.\n\n## Commands\n- help - Show all features\n- reset - Clear conversation (keeps memories)\n- status - Check account status\n\n## Plans\n- Free: 100 messages/month\n- Pro ($9.99/mo): 500 messages/month\n- Unlimited ($24.99/mo): Unlimited";
+
+DOCS.technical = "# Technical Documentation\n\n## Architecture\n\n### Stack\n- Runtime: Node.js\n- Database: SQLite\n- AI: Anthropic Claude Sonnet 4.5\n- Speech-to-Text: OpenAI Whisper\n- Text-to-Speech: ElevenLabs\n- Voice Calls: Twilio\n- Messaging: WhatsApp Cloud API (Meta)\n- Image Generation: DALL-E 3\n- Vision: GPT-4o\n- Search: Perplexity / Brave / DuckDuckGo\n- Browser: Puppeteer (headless Chrome)\n\n### Server\n- VPS: Hostinger, Ubuntu\n- Domain: jarvisproject.ai (SSL via Lets Encrypt)\n- Service: systemd (jarvis-memorae)\n- Port: 3003\n\n## Database Tables\n\n### tenants\nUser accounts: id, phone, name, email, status, plan, message_count, messages_this_month, model, last_active\n\n### conversations\nChat history: id, tenant_id, role (user/assistant), content, created_at\n\n### memories\nLong-term memory: id, tenant_id, key, value, created_at\n\n### reminders\nScheduled: id, tenant_id, message, remind_at, recurring, status\n\n### cron_jobs\nRecurring tasks: id, tenant_id, description, schedule, next_run, active\n\n### contacts\nAddress book: id, tenant_id, name, phone, email, category\n\n### config\nSystem config (API keys): key, value, updated_at\n\n### signups\nPending registrations: id, phone, name, email, activation_code, status, expires_at\n\n## Webhooks\n- WhatsApp: https://jarvisproject.ai/webhook\n- Twilio Voice: https://jarvisproject.ai/voice/incoming\n- Twilio Status: https://jarvisproject.ai/voice/status\n\n## Per-Tenant Isolation\nEach tenant has:\n- Separate conversation history\n- Private memory store\n- Own file workspace at data/tenants/{id}/\n- Individual SOUL.md and MEMORY.md\n- Isolated contacts and reminders";
+
+DOCS.developer = "# Developer Documentation\n\n## Source Files (src/)\n\n### Core\n- index.js - Main entry, Express server, webhook handler\n- ai.js - AI brain, system prompt, tool execution\n- db.js - SQLite database initialization\n- tenant.js - Tenant provisioning, templates\n\n### Communication\n- whatsapp.js - WhatsApp Cloud API integration\n- calls.js - Twilio incoming calls\n- outbound-call.js - Twilio outbound calls + ElevenLabs\n- voice.js - Whisper STT + ElevenLabs TTS\n\n### AI Tools\n- web-search.js - Search (Perplexity/Brave/DDG)\n- url-fetch.js - URL content extraction\n- vision.js - GPT-4o image analysis\n- image-gen.js - DALL-E 3 generation\n- browser.js - Puppeteer headless Chrome\n- contacts.js - Contact management\n- workspace.js - Per-tenant files\n\n### System\n- heartbeat.js - 60s heartbeat + cron processor\n- billing.js - Usage tracking, WiPay payments\n- signup.js - Web signup flow\n- reminders.js - Scheduling and delivery\n- email.js - SMTP sending\n- backup.js - Database backups\n- monitor.js - Error monitoring\n- dashboard-api.js - Admin API endpoints\n\n## Adding a New Tool\n1. Create src/your-tool.js\n2. Export the function\n3. Add to tools list in ai.js system prompt\n4. Add action handler in ai.js switch\n5. Restart: systemctl restart jarvis-memorae\n\n## API Endpoints\n\n### Public\n- POST /webhook - WhatsApp messages\n- GET /webhook - WhatsApp verification\n- POST /voice/incoming - Twilio voice\n- POST /api/signup - User registration\n- GET /health - Health check\n\n### Admin\n- GET /api/admin/stats - Dashboard stats\n- GET /api/admin/tenants - List tenants\n- GET /api/admin/tenant/:id - Tenant details\n- GET /api/admin/tenant/:id/conversations\n- GET /api/admin/tenant/:id/memories\n- GET /api/admin/signups\n- POST /api/admin/generate-code\n- GET/POST /api/admin/config\n- GET /api/admin/usage\n- GET /api/admin/errors\n\n## Environment Variables\n- PORT (3003)\n- WHATSAPP_TOKEN\n- WHATSAPP_PHONE_NUMBER_ID\n- WHATSAPP_APP_SECRET\n- ANTHROPIC_API_KEY\n- OPENAI_API_KEY\n- ELEVENLABS_API_KEY\n- TWILIO_ACCOUNT_SID\n- TWILIO_AUTH_TOKEN\n- TWILIO_PHONE_NUMBER\n\n## Deployment\n- SSH: root@187.77.217.138\n- Service: systemctl restart jarvis-memorae\n- Logs: journalctl -u jarvis-memorae -f\n- DB: sqlite3 data/jarvis.db";
+
+
+function loadServiceStatus() {
+  fetch('/api/admin/config', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) { return r.json(); })
+    .then(function(configs) {
+      var status = 'live';
+      configs.forEach(function(c) { if (c.key === 'service_status') status = c.value; });
+      updateToggleUI(status);
+    });
+}
+
+function updateToggleUI(status) {
+  var btn = document.getElementById('serviceToggle');
+  var label = document.getElementById('serviceLabel');
+  if (status === 'live') {
+    btn.textContent = '\u2705 LIVE';
+    btn.style.background = 'rgba(76,175,80,0.2)';
+    btn.style.color = '#4caf50';
+    btn.style.borderColor = 'rgba(76,175,80,0.4)';
+    label.textContent = 'New signups and unknown users can register';
+  } else {
+    btn.textContent = '\u23f8 PAUSED';
+    btn.style.background = 'rgba(255,152,0,0.2)';
+    btn.style.color = '#ff9800';
+    btn.style.borderColor = 'rgba(255,152,0,0.4)';
+    label.textContent = 'Private beta \u2014 only existing users can chat';
+  }
+  btn.dataset.status = status;
+}
+
+function toggleService() {
+  var btn = document.getElementById('serviceToggle');
+  var current = btn.dataset.status || 'live';
+  var next = current === 'live' ? 'off' : 'live';
+  fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'service_status', value: next })
+  }).then(function() { updateToggleUI(next); });
+}
+
 </script>
 </body>
 </html>

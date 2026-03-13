@@ -21,6 +21,9 @@
     "nodemailer": "^6.10.1",
     "otpauth": "^9.5.0",
     "pdf-parse": "^1.1.1",
+    "puppeteer-core": "^24.38.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "qrcode": "^1.5.4",
     "sharp": "^0.33.0"
   }

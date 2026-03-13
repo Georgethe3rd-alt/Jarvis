@@ -19,7 +19,13 @@ function normalizePhone(phone) {
 
 // Sign up — generate activation code
 router.post('/register', (req, res) => {
-  const { name, email, phone } = req.body;
+  // Check service status
+    const db2 = require('./db');
+    const svcRow = db2.prepare("SELECT value FROM config WHERE key = 'service_status'").get();
+    if (svcRow && svcRow.value === 'off') {
+      return res.status(503).json({ error: 'Jarvis is currently in private beta. Join the waitlist!' });
+    }
+    const { name, email, phone } = req.body;
 
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone number are required.' });

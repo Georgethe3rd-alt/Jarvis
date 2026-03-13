@@ -4,6 +4,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const { startHeartbeat, ensureTables } = require("./heartbeat");
 
 ['data', 'data/tenants', 'public'].forEach(d => {
   const p = path.join(__dirname, '..', d);
@@ -200,7 +201,9 @@ app.post('/webhook', async (req, res) => {
         if (reply) {
           const ttsAudio = await textToSpeech(reply);
           if (ttsAudio) {
-            await sendAudioMessage(phone, ttsAudio);
+            const audioResult = await sendAudioMessage(phone, ttsAudio);
+            console.log("[VOICE] Audio send result:", audioResult ? "SUCCESS" : "FAILED");
+            if (!audioResult) await sendMessage(phone, reply);
             if (reply.length > 100) await sendMessage(phone, reply);
           } else {
             await sendMessage(phone, reply);
@@ -305,19 +308,86 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
+      // ─── Upgrade Command ─────────────────────────────
+      if (textLower === 'upgrade' || textLower === 'plans' || textLower === 'pricing') {
+        const base = getConfig('app_base_url') || 'https://jarvisproject.ai';
+        const plan = PLANS[tenant.plan || 'free'];
+        const used = tenant.messages_this_month || 0;
+        const limit = plan.messagesPerMonth === Infinity ? '∞' : plan.messagesPerMonth;
+        await sendMessage(phone,
+          `💎 *Jarvis Plans*\n\n` +
+          `Your current plan: *${plan.name}* (${used}/${limit} messages used)\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `🆓 *Free* — $0/month\n` +
+          `• 50 messages/month\n` +
+          `• Text & voice notes\n` +
+          `• Basic memory\n\n` +
+          `⚡ *Pro* — $9.99/month\n` +
+          `• 500 messages/month\n` +
+          `• Priority responses\n` +
+          `• Full memory & reminders\n` +
+          `• Document analysis\n` +
+          `👉 ${base}/billing/checkout/pro?phone=${tenant.phone}\n\n` +
+          `🚀 *Unlimited* — $24.99/month\n` +
+          `• Unlimited messages\n` +
+          `• Everything in Pro\n` +
+          `• Daily briefings\n` +
+          `• Priority support\n` +
+          `👉 ${base}/billing/checkout/unlimited?phone=${tenant.phone}\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `Tap a link above to upgrade instantly.`
+        );
+        return;
+      }
+
       // ─── Help Command ─────────────────────────────────
+      if (textLower === 'reset' || textLower === 'start over' || textLower === 'restart') {
+        // Clear conversation history but keep memory
+        db.prepare('DELETE FROM conversations WHERE tenant_id = ?').run(tenant.id);
+        await sendMessage(phone,
+          "🔄 *Fresh start!* Conversation history cleared.\n\n" +
+          "Your memories and files are still safe — I just forgot our recent chat.\n" +
+          "What can I help you with?"
+        );
+        return;
+      }
+
       if (textLower === 'help' || textLower === 'commands') {
         await sendMessage(phone,
-          `🤖 *Jarvis Commands*\n\n` +
-          `📊 *usage* / *my plan* — Check your plan & message count\n` +
-          `⏰ *"Set my daily briefing for 8am"* — Schedule morning summary\n` +
-          `🧠 *"Remember that..."* — Save something to memory\n` +
-          `📋 *"Remind me to..."* — Set a reminder\n` +
-          `📨 *"Send my list to +1868..."* — Share with a contact\n` +
-          `🎭 *"Be more casual"* — Change personality\n` +
-          `🌍 *"Speak to me in Spanish"* — Switch language\n` +
-          `❓ *help* — Show this menu\n\n` +
-          `Or just talk to me naturally — I understand context.`
+          `🤖 *Jarvis — Full Command List*\n\n` +
+          `🌐 *Web Search*\n` +
+          `"What's happening in Trinidad today?"\n` +
+          `"Search for flights to Miami"\n\n` +
+          `🧠 *Memory*\n` +
+          `"Remember my anniversary is June 15th"\n` +
+          `"What did I tell you about John?"\n\n` +
+          `⏰ *Reminders & Scheduling*\n` +
+          `"Remind me to call Mom at 5pm"\n` +
+          `"Set my daily briefing for 8am"\n` +
+          `"Every Monday at 9am, send me a motivational quote"\n\n` +
+          `🎤 *Voice*\n` +
+          `Send a voice note — I'll transcribe and reply\n` +
+          `"Send me a voice note saying good morning"\n\n` +
+          `📞 *Phone Calls*\n` +
+          `"Call me" — I'll ring your phone\n` +
+          `"Call +1868..." — I'll call any number for you\n\n` +
+          `🎨 *Images*\n` +
+          `"Generate an image of a tropical beach"\n` +
+          `Send me a photo — I'll describe what I see\n\n` +
+          `📁 *Files & Notes*\n` +
+          `"Write down my grocery list"\n` +
+          `"Show me my saved files"\n\n` +
+          `📇 *Contacts*\n` +
+          `"Save John's number: +1868..."\n` +
+          `"Text John: running 10 min late"\n\n` +
+          `🌐 *Web Browsing*\n` +
+          `"Go to wikipedia.com and read about Trinidad"\n` +
+          `"Summarise this article: https://..."\n\n` +
+          `📊 *usage* — Check your plan\n` +
+          `💎 *upgrade* — View plans & pricing\n` +
+          `🎭 *"Be more casual"* — Change my personality\n` +
+          `🌍 *"Speak to me in Spanish"* — Switch language\n\n` +
+          `Or just talk to me naturally — I understand context. 🤖`
         );
         return;
       }
@@ -329,9 +399,17 @@ app.post('/webhook', async (req, res) => {
       }
       incrementMessageCount(tenant.id);
 
+      // Mark as read (blue ticks) immediately
+      try { 
+        await markAsRead(msg.messageId || msg.id);
+        if (msg.messageId) await reactToMessage(phone, msg.messageId, '🤔');
+      } catch(e) {}
+
       // ─── Process Message ──────────────────────────────
       try {
         let reply = await processMessage(phone, msg.name, text);
+        // Remove thinking reaction
+        if (msg.messageId) try { await reactToMessage(phone, msg.messageId, ''); } catch(e) {}
         if (reply) {
           // Usage widget
           const freshTenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenant.id);
@@ -365,42 +443,77 @@ app.post('/webhook', async (req, res) => {
     if (codeMatch) {
       const code = codeMatch[0];
       const signup = db.prepare(
-        "SELECT * FROM signups WHERE phone = ? AND activation_code = ? AND status = 'pending' AND expires_at > datetime('now')"
-      ).get(phone, code);
+        "SELECT * FROM signups WHERE (phone = ? OR phone = ? OR phone = ?) AND activation_code = ? AND status = 'pending' AND expires_at > datetime('now')"
+      ).get(phone, phone.replace(/^1/, ''), '1' + phone, code);
 
       if (signup) {
         db.prepare("UPDATE signups SET status = 'activated', activated_at = CURRENT_TIMESTAMP WHERE id = ?").run(signup.id);
         const newTenant = provisionTenant(phone, signup.name);
         db.prepare('UPDATE tenants SET email = ? WHERE id = ?').run(signup.email, newTenant.id);
-        db.prepare("UPDATE tenants SET onboarding_step = 'name' WHERE id = ?").run(newTenant.id);
+        db.prepare("UPDATE tenants SET display_name = ?, onboarding_step = 'complete' WHERE id = ?").run(signup.name, newTenant.id);
 
         console.log(`[ACTIVATE] ${signup.name} (${phone}) → Tenant #${newTenant.id}`);
         sendWelcomeEmail(signup.email, signup.name).catch(() => {});
 
         await sendMessage(phone,
-          `✅ *Jarvis online.* Welcome, ${signup.name}.\n\n` +
-          `Your personal AI workspace has been provisioned. Let me get to know you — just a few quick questions.\n\n` +
-          `First: *What should I call you?* (A name, nickname, whatever you prefer)`
+          `✅ *Jarvis online.* Welcome, ${signup.name}! 🤖\n\n` +
+          `Your personal AI workspace is ready. Here's what I can do:\n\n` +
+          `🌐 *Search the web* — "What's the latest news?"\n` +
+          `🧠 *Remember anything* — "Remember my wifi password is..."\n` +
+          `⏰ *Set reminders* — "Remind me to call Mom at 5pm"\n` +
+          `🎤 *Voice notes* — Send me one, I'll reply with voice!\n` +
+          `🎨 *Generate images* — "Draw me a sunset over the Caribbean"\n` +
+          `📞 *Phone calls* — "Call me" and I'll ring your phone\n` +
+          `📁 *Save notes* — "Write down my grocery list"\n\n` +
+          `Just talk to me naturally — or type *help* for the full menu.`
         );
+
+        // Send welcome voice note
+        try {
+          const welcomeVoice = `Welcome aboard, ${signup.name}! I'm Jarvis, your personal AI assistant. I can search the web, set reminders, make phone calls, generate images, send voice notes, and much more. Just talk to me like you would a friend. I'm here whenever you need me.`;
+          const welcomeAudio = await transcribe.textToSpeech ? null : null;
+          const { textToSpeech: tts } = require('./voice');
+          const audioBuffer = await tts(welcomeVoice);
+          if (audioBuffer) {
+            await sendAudioMessage(phone, audioBuffer);
+          }
+        } catch (voiceErr) {
+          console.error('[ACTIVATE] Welcome voice note failed:', voiceErr.message);
+        }
         return;
       }
 
-      await sendMessage(phone,
-        "❌ That activation code is invalid or expired.\n\n" +
-        "Visit our website to sign up and get a new code, then send it here to activate."
-      );
+      const svcStatus = getConfig('service_status') || 'live';
+      if (svcStatus === 'off') {
+        await sendMessage(phone,
+          "👋 Jarvis is currently in *private beta*. Visit jarvisproject.ai to join the waitlist! 🚀"
+        );
+      } else {
+        await sendMessage(phone,
+          "❌ That activation code is invalid or expired.\n\n" +
+          "Visit our website to sign up and get a new code, then send it here to activate."
+        );
+      }
       return;
     }
 
     // ─── Unknown User ─────────────────────────────────────
-    await sendMessage(phone,
-      "👋 Hey there! I'm Jarvis, a personal AI assistant.\n\n" +
-      "To get started:\n" +
-      "1️⃣ Visit our website and register\n" +
-      "2️⃣ You'll get a 6-digit activation code\n" +
-      "3️⃣ Send that code here to activate\n\n" +
-      "Already have a code? Just send it now!"
-    );
+    const serviceStatus = getConfig('service_status') || 'live';
+    if (serviceStatus === 'off') {
+      await sendMessage(phone,
+        "👋 Hey! Jarvis is currently in *private beta*.\n\n" +
+        "We're onboarding users in batches. Visit jarvisproject.ai to join the waitlist and be first in line when we open up! 🚀"
+      );
+    } else {
+      await sendMessage(phone,
+        "👋 Hey there! I'm Jarvis, a personal AI assistant.\n\n" +
+        "To get started:\n" +
+        "1️⃣ Visit our website and register\n" +
+        "2️⃣ You'll get a 6-digit activation code\n" +
+        "3️⃣ Send that code here to activate\n\n" +
+        "Already have a code? Just send it now!"
+      );
+    }
 
   } catch (err) {
     logError(err.message, err.stack, { handler: 'webhook-post' });
@@ -426,78 +539,67 @@ app.get('/health', (req, res) => {
 // ─── Onboarding Handler ─────────────────────────────────────
 async function handleOnboarding(tenant, phone, name, text) {
   const step = tenant.onboarding_step;
+  const PRESETS = PERSONALITY_PRESETS;
 
   if (step === 'name') {
+    // Accept their name, skip straight to personality choice
     const displayName = text.trim();
-    db.prepare("UPDATE tenants SET display_name = ?, onboarding_step = 'work' WHERE id = ?")
+    db.prepare("UPDATE tenants SET display_name = ?, onboarding_step = 'personality' WHERE id = ?")
       .run(displayName, tenant.id);
-    updateMemoryFile(tenant, 'About My Human', `Preferred name: ${displayName}`);
-    await sendMessage(phone, `Nice to meet you, ${displayName}. 🤝\n\nNext: *What do you do for work?* (Or just say "skip" if you'd rather not say)`);
+    updateMemoryFile(tenant, 'About My Human', 'Preferred name: ' + displayName);
 
-  } else if (step === 'work') {
-    const work = text.trim().toLowerCase() === 'skip' ? null : text.trim();
-    db.prepare("UPDATE tenants SET onboarding_step = 'goals' WHERE id = ?").run(tenant.id);
-    if (work) updateMemoryFile(tenant, 'About My Human', `Work: ${work}`);
-    await sendMessage(phone, `${work ? 'Got it.' : 'No problem.'}\n\nLast one: *What's the main thing you want me to help with?*\n\n(Productivity, reminders, brainstorming, daily planning — anything goes)`);
-
-  } else if (step === 'goals') {
-    const goal = text.trim();
-    db.prepare("UPDATE tenants SET onboarding_step = 'personality' WHERE id = ?").run(tenant.id);
-    updateMemoryFile(tenant, 'About My Human', `Primary goal: ${goal}`);
-    updateSoulFile(tenant, `User's primary use case: ${goal}. Prioritize this in suggestions and proactive help.`);
-    appendDailyNote(tenant, `Goal set: ${goal}`);
-
-    const presetList = Object.entries(PERSONALITY_PRESETS).map(([key, val], i) =>
-      `*${i + 1}.* ${val.name} — ${val.description}`
-    ).join('\n');
+    const presetList = Object.entries(PRESETS).map(function(entry, i) {
+      return '*' + (i + 1) + '.* ' + entry[1].name + ' — ' + entry[1].description;
+    }).join('\n');
 
     await sendMessage(phone,
-      `Great! Last thing — pick a personality style:\n\n${presetList}\n\nJust send the number (1-${Object.keys(PERSONALITY_PRESETS).length}), or say "skip" for the default.`
+      'Welcome, ' + displayName + '! 🤝\n\n' +
+      'Quick — pick a personality style (or say *skip* for default):\n\n' +
+      presetList
     );
 
   } else if (step === 'personality') {
-    const keys = Object.keys(PERSONALITY_PRESETS);
+    const keys = Object.keys(PRESETS);
     const choice = parseInt(text.trim());
+    var selectedKey;
 
-    // FIX #4: Handle invalid input gracefully
-    let selectedKey;
     if (text.trim().toLowerCase() === 'skip') {
       selectedKey = 'default';
     } else if (choice >= 1 && choice <= keys.length) {
       selectedKey = keys[choice - 1];
     } else {
-      // Invalid input — re-prompt instead of silently defaulting
-      const presetList = Object.entries(PERSONALITY_PRESETS).map(([key, val], i) =>
-        `*${i + 1}.* ${val.name} — ${val.description}`
-      ).join('\n');
-      await sendMessage(phone,
-        `Hmm, I didn't get that. Please send a number (1-${keys.length}) or "skip":\n\n${presetList}`
-      );
-      return;
+      // Not a valid choice — just default and move on, don't loop
+      selectedKey = 'default';
     }
 
-    const preset = PERSONALITY_PRESETS[selectedKey];
+    const preset = PRESETS[selectedKey];
     const wsPath = tenant.workspace_path || getTenantDir(tenant.id);
     fs.writeFileSync(path.join(wsPath, 'SOUL.md'), preset.soul + '\n\n## User Customizations\n');
 
     db.prepare("UPDATE tenants SET onboarding_step = 'complete' WHERE id = ?").run(tenant.id);
-    appendDailyNote(tenant, `Onboarding complete. Personality: ${preset.name}`);
+    appendDailyNote(tenant, 'Onboarding complete. Personality: ' + preset.name);
 
     const displayName = tenant.display_name || name || 'boss';
     await sendMessage(phone,
-      `*${preset.name}* mode activated. ✅\n\n` +
-      `Here's what I can do, ${displayName}:\n\n` +
-      `🧠 *Total Recall* — Tell me anything. I never forget.\n` +
-      `⏰ *Reminders* — "Remind me to call Mom at 5pm"\n` +
-      `📋 *Lists* — Shopping, tasks, ideas — all sorted.\n` +
-      `💬 *Draft & Think* — Brainstorm, write emails, plan.\n` +
-      `📊 *Daily Briefing* — "Set my briefing for 8am"\n` +
-      `📨 *Sharing* — "Send my grocery list to +1868..."\n` +
-      `❓ *help* — Show all commands\n\n` +
-      `Everything is private — your own isolated workspace.\n\n` +
-      `What can I help you with first?`
+      '*' + preset.name + '* mode activated. ✅\n\n' +
+      "Here's what I can do, " + displayName + ':\n\n' +
+      '🧠 *Total Recall* — Tell me anything. I never forget.\n' +
+      '⏰ *Reminders* — "Remind me to call Mom at 5pm"\n' +
+      '📋 *Lists* — Shopping, tasks, ideas — all sorted.\n' +
+      '💬 *Draft & Think* — Brainstorm, write emails, plan.\n' +
+      '🎤 *Voice Notes* — Send me voice notes, I\'ll reply with voice!\n' +
+      '📊 *Daily Briefing* — "Set my briefing for 8am"\n' +
+      '💎 *upgrade* — View plans & upgrade\n' +
+      '❓ *help* — Show all commands\n\n' +
+      'Try me — ask anything or send a voice note!'
     );
+
+  } else {
+    // Unknown step — auto-complete onboarding and process as normal message
+    db.prepare("UPDATE tenants SET onboarding_step = 'complete' WHERE id = ?").run(tenant.id);
+    return false; // Signal to caller to process as normal message
   }
+  return true;
 }
 
 // ─── Start ──────────────────────────────────────────────────
@@ -516,4 +618,42 @@ app.listen(PORT, '0.0.0.0', () => {
   startBriefingChecker();
   startBackupScheduler();
   startWinbackChecker();
+});
+
+// Start heartbeat system
+try { ensureTables(); startHeartbeat(); } catch(e) { console.error("[HEARTBEAT] Failed to start:", e.message); }
+
+
+// ─── Voice verification webhook (for Meta) ──────────────────
+app.post('/voice/verify', (req, res) => {
+  console.log('[VOICE-VERIFY] Incoming call from:', req.body.From);
+  // Record the call so we can hear the code
+  res.type('text/xml').send(`
+    <Response>
+      <Pause length="2"/>
+      <Record maxLength="30" action="/voice/verify-done" transcribe="true" transcribeCallback="/voice/verify-transcribe"/>
+    </Response>
+  `);
+});
+
+app.post('/voice/verify-done', (req, res) => {
+  console.log('[VOICE-VERIFY] Recording done:', req.body.RecordingUrl);
+  res.type('text/xml').send('<Response><Say>Thank you.</Say></Response>');
+});
+
+app.post('/voice/verify-transcribe', (req, res) => {
+  console.log('[VOICE-VERIFY] Transcription:', req.body.TranscriptionText);
+  res.sendStatus(200);
+});
+
+
+// SMS verification endpoint
+app.post("/sms/verify", (req, res) => {
+  console.log("[SMS-VERIFY] From:", req.body.From, "Body:", req.body.Body);
+  res.type("text/xml").send("<Response></Response>");
+});
+// ─── Twilio SMS webhook (for Meta verification) ─────────────
+app.post('/sms/incoming', (req, res) => {
+  console.log('[SMS]', JSON.stringify(req.body));
+  res.type('text/xml').send('<Response></Response>');
 });

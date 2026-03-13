@@ -1,6 +1,7 @@
 const db = require('./db');
 const { sendMessage } = require('./whatsapp');
-const { processMessage } = require('./ai');
+// Lazy require to avoid circular dependency
+function getProcessMessage() { return require("./ai").processMessage; }
 
 // ─── DB Migration ───────────────────────────────────────────
 function migrateBriefings() {
@@ -58,7 +59,7 @@ function startBriefingChecker() {
 async function sendBriefing(tenant) {
   console.log(`[BRIEFING] Sending daily briefing to ${tenant.phone}`);
   try {
-    const reply = await processMessage(
+    const reply = await getProcessMessage()(
       tenant.phone,
       tenant.name,
       '[SYSTEM] Generate my daily briefing. Include: pending reminders, recent memories, any tasks or notes from the last 24 hours. Be concise and actionable.'

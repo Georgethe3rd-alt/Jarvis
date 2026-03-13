@@ -8,7 +8,7 @@ const router = express.Router();
 
 // ─── Plans ──────────────────────────────────────────────────
 const PLANS = {
-  free:      { name: 'Free',      price: 0,     messagesPerMonth: 50,   label: '50 messages/month' },
+  free:      { name: 'Free',      price: 0,     messagesPerMonth: 100,  label: '100 messages/month' },
   pro:       { name: 'Pro',       price: 9.99,  messagesPerMonth: 500,  label: '500 messages/month' },
   unlimited: { name: 'Unlimited', price: 24.99, messagesPerMonth: Infinity, label: 'Unlimited messages' }
 };
